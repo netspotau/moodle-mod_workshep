@@ -25,14 +25,31 @@ $calibration = $workshep->calibration_instance();
 $settingsform = $calibration->get_settings_form($PAGE->url);
 
 if ($settingsdata = $settingsform->get_data()) {
-    // update the record with the changed Comparison / Consistency settings
+    // BASE-5468: Update the record with the changed Comparison / Consistency settings
     $workshepsettings = array('id' => $workshep->id,
                               'calibrationcomparison' => $settingsdata->comparison,
                               'calibrationconsistency' => $settingsdata->consistency);
     $DB->update_record('workshep', $workshepsettings);
 
     $calibration->calculate_calibration_scores($settingsdata);   // updates 'gradinggrade' in {workshep_assessments}
-    $workshep->log('update calibration scores');
+    $context = context_module::instance($cm->id); // BASE-5360.
+
+    // BASE-5468: Replaced legacy logging process when updating calibration was updated.
+
+    $params = array(
+        'relateduserid' => null,
+        'objectid' => $workshep->id,
+        'context' => $workshep->context,
+        'courseid' => $course->id,
+        'other' => array(
+            'workshepid' => $workshep->id,
+            'submissionid' => null
+        )
+    );
+
+    $event = \mod_workshep\event\update_calibration_scores::create($params); // BASE-5468
+    $event->add_record_snapshot('workshep', $workshep);
+    $event->trigger();
 }
 
 redirect(new moodle_url($workshep->view_url(), array('page' => $page, 'sortby' => $sortby, 'sorthow' => $sorthow)));

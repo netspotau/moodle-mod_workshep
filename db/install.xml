@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/workshep/db" VERSION="20180427" COMMENT="XMLDB file for Moodle mod/workshep"
+<XMLDB PATH="mod/workshep/db" VERSION="20210302" COMMENT="XMLDB file for Moodle mod/workshep"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -25,7 +25,9 @@
         <FIELD NAME="strategy" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="The type of the current grading strategy used in this workshep"/>
         <FIELD NAME="evaluation" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="The recently used grading evaluation method"/>
         <FIELD NAME="gradedecimals" TYPE="int" LENGTH="3" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Number of digits that should be shown after the decimal point when displaying grades"/>
-        <FIELD NAME="nattachments" TYPE="int" LENGTH="3" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Number of required submission attachments"/>
+        <FIELD NAME="submissiontypetext" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Can students enter text for their submissions? 0 for no, 1 for optional, 2 for required."/>
+        <FIELD NAME="submissiontypefile" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Can students attach files for their submissions? 0 for no, 1 for optional, 2 for required."/>
+        <FIELD NAME="nattachments" TYPE="int" LENGTH="3" NOTNULL="false" DEFAULT="1" SEQUENCE="false" COMMENT="Maximum number of submission attachments"/>
         <FIELD NAME="submissionfiletypes" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="comma separated list of file extensions"/>
         <FIELD NAME="latesubmissions" TYPE="int" LENGTH="2" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Allow submitting the work after the deadline"/>
         <FIELD NAME="maxbytes" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="100000" SEQUENCE="false" COMMENT="Maximum size of the one attached file"/>
@@ -49,10 +51,10 @@
         <FIELD NAME="autorecalculate" TYPE="int" LENGTH="2" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="bool: Whether or not auto recalculate all calibrations on submission"/>
         <FIELD NAME="calibrationphase" TYPE="int" LENGTH="3" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="The phase AFTER which to place the calibration phase, or 0 if calibration is not being used"/>
         <FIELD NAME="calibrationmethod" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="The type of the current calibration method used in this workshep"/>
-        <FIELD NAME="calibrationcomparison" TYPE="int" LENGTH="2" NOTNULL="true" SEQUENCE="false" COMMENT="The stricter the comparison, the closer the marker had to be to the provided example assessments." DEFAULT="5" />
-        <FIELD NAME="calibrationconsistency" TYPE="int" LENGTH="2" NOTNULL="true" SEQUENCE="false" COMMENT="A stricter consistency means markers must be more accurate with all of their example assessments." DEFAULT="5" />
-        <FIELD NAME="submitterflagging" TYPE="int" LENGTH="2" NOTNULL="true" SEQUENCE="false" COMMENT="Allow users to flag assessments as unfair" DEFAULT="1" />
-        <FIELD NAME="nosubmissionrequired" TYPE="int" LENGTH="2" NOTNULL="true" SEQUENCE="false" COMMENT="Allow students to be reviewed without a submission." DEFAULT="0" />
+        <FIELD NAME="calibrationcomparison" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="5" SEQUENCE="false" COMMENT="The stricter the comparison, the closer the marker had to be to the provided example assessments."/>
+        <FIELD NAME="calibrationconsistency" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="5" SEQUENCE="false" COMMENT="A stricter consistency means markers must be more accurate with all of their example assessments."/>
+        <FIELD NAME="submitterflagging" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Allow users to flag assessments as unfair"/>
+        <FIELD NAME="nosubmissionrequired" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow students to be reviewed without a submission."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -114,7 +116,7 @@
         <KEY NAME="reviewer_fk" TYPE="foreign" FIELDS="reviewerid" REFTABLE="user" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
-          <INDEX NAME="submissionreviewer" UNIQUE="true" FIELDS="submissionid, reviewerid"/>
+        <INDEX NAME="submissionreviewer" UNIQUE="true" FIELDS="submissionid, reviewerid"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="workshep_grades" COMMENT="How the reviewers filled-up the grading forms, given grades and comments">
@@ -123,7 +125,7 @@
         <FIELD NAME="assessmentid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Part of which assessment this grade is of"/>
         <FIELD NAME="strategy" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="dimensionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Foreign key. References dimension id in one of the grading strategy tables."/>
-        <FIELD NAME="grade" TYPE="number" LENGTH="10" NOTNULL="true" SEQUENCE="false" DECIMALS="5" COMMENT="Given grade in the referenced assessment dimension."/>
+        <FIELD NAME="grade" TYPE="number" LENGTH="10" NOTNULL="false" SEQUENCE="false" DECIMALS="5" COMMENT="Given grade in the referenced assessment dimension."/>
         <FIELD NAME="peercomment" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Reviewer's comment to the grade value."/>
         <FIELD NAME="peercommentformat" TYPE="int" LENGTH="3" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="The format of peercomment field"/>
       </FIELDS>

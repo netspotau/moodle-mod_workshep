@@ -1,0 +1,8 @@
+{
+    "plugintypes": {
+        "workshepform": "mod\/workshep\/form",
+        "workshepallocation": "mod\/workshep\/allocation",
+        "workshepeval": "mod\/workshep\/eval",
+        "workshepcalibration": "mod\/workshep\/calibration"
+    }
+}

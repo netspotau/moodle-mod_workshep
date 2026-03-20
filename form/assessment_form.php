@@ -37,6 +37,18 @@ require_once($CFG->libdir . '/formslib.php'); // parent class definition
  */
 class workshep_assessment_form extends moodleform {
 
+    /** @var string Mode to open the form in: preview/assessment. */
+    public $mode;
+
+    /** @var workshep_strategy workshep strategy */
+    public $strategy;
+
+    /** @var workshep workshep. */
+    public $workshep;
+
+    /** @var array options. */
+    public $options;
+
     /**
      * Add the fields that are common for all grading strategies.
      *

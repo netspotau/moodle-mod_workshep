@@ -342,7 +342,7 @@ class mod_workshep_portfolio_caller extends portfolio_module_caller_base {
         }
 
         if ($this->workshep->overallfeedbackmode) {
-            if ($assessment->feedbackauthorattachment or trim($assessment->feedbackauthor) !== '') {
+            if ($assessment->feedbackauthorattachment || trim($assessment->feedbackauthor ?? '') !== '') {
                 $output .= html_writer::tag('h3', get_string('overallfeedback', 'mod_workshep'));
                 $content = $this->format_exported_text($assessment->feedbackauthor, $assessment->feedbackauthorformat);
                 $content = portfolio_rewrite_pluginfile_urls($content, $this->workshep->context->id, 'mod_workshep',

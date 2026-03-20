@@ -81,10 +81,10 @@ function workshepform_numerrors_pluginfile($course, $cm, $context, $filearea, ar
  */
 class workshep_numerrors_strategy implements workshep_strategy {
 
-    /** @const default number of dimensions to show */
+    /** @var default number of dimensions to show */
     const MINDIMS = 3;
 
-    /** @const number of dimensions to add */
+    /** @var number of dimensions to add */
     const ADDDIMS = 2;
 
     /** @var workshep the parent workshep instance */
@@ -241,7 +241,7 @@ class workshep_numerrors_strategy implements workshep_strategy {
      * @param bool $editable
      * @param array $options
      */
-    public function get_assessment_form(moodle_url $actionurl=null, $mode='preview', stdclass $assessment=null, $editable=true, $options=array()) {
+    public function get_assessment_form(?moodle_url $actionurl=null, $mode='preview', ?stdclass $assessment=null, $editable=true, $options=array()) {
         global $CFG;    // needed because the included files use it
         global $PAGE;
         global $DB;

@@ -46,16 +46,18 @@ class workshep_examples_calibration_settings_form extends moodleform {
         $label = get_string('comparison', 'workshepcalibration_examples');
         $mform->addElement('select', 'comparison', $label, $options);
         $mform->addHelpButton('comparison', 'comparison', 'workshepcalibration_examples');
+        // BASE-5468.
 
         $label = get_string('consistency', 'workshepcalibration_examples');
         $mform->addElement('select', 'consistency', $label, $options);
         $mform->addHelpButton('consistency', 'consistency', 'workshepcalibration_examples');
+        // BASE-5468.
 
         $mform->addElement('submit', 'submit', get_string('calculatescores', 'workshep'));
 
         $this->set_data($current);
 
-        // Update settings form based on activity defaults not activity site wide defaults.
+        // BASE-5468: Update settings form based on activity defaults not activity site wide defaults.
         $mform->setDefault('comparison', $workshep->calibrationcomparison);
         $mform->setDefault('consistency', $workshep->calibrationconsistency);
     }

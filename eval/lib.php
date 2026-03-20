@@ -31,6 +31,9 @@ require_once($CFG->dirroot . '/lib/formslib.php');
  */
 abstract class workshep_evaluation {
 
+    /** @var workshep the parent workshep instance */
+    protected $workshep;
+
     /**
      * Calculates grades for assessment and updates 'gradinggrade' fields in 'workshep_assessments' table
      *
@@ -48,7 +51,7 @@ abstract class workshep_evaluation {
      *
      * @return workshep_evaluation_settings_form
      */
-    public function get_settings_form(moodle_url $actionurl=null) {
+    public function get_settings_form(?moodle_url $actionurl=null) {
 
         $customdata = array('workshep' => $this->workshep);
         $attributes = array('class' => 'evalsettingsform');

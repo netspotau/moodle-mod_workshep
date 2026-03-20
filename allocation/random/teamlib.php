@@ -32,7 +32,9 @@ class workshep_teammode_random_allocator extends workshep_random_allocator {
         foreach ($rslt as $r) {
             $users[] = $r->authorid;
         }
-        $fields = user_picture::fields();
+
+        // BASE-4351. Use for_userpic function from course_user API.
+        $fields = \core_user\fields::for_userpic()->get_sql('', false, '', '', false)->selects;
         $users = $DB->get_records_list('user','id',$users,'',$fields);
         //loop 2: apply users to submissions 
         $ret[0] = array();

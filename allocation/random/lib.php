@@ -93,7 +93,12 @@ class workshep_random_allocator implements workshep_allocator {
 
         // Increase timeout to max of 2 minutes.
         // Writing thousands of records does take time
-        set_time_limit(120);
+        if (!PHPUNIT_TEST) { // BASE-4539: Prevent error in unit tests.
+            set_time_limit(120);
+        }
+
+        // BASE-5233: Increase memory for large workshop classes allocations.
+        raise_memory_limit(MEMORY_EXTRA);
 
         $authors        = $this->get_authors();
         $reviewers      = $this->workshep->get_potential_reviewers(!$settings->assesswosubmission);
@@ -254,13 +259,17 @@ class workshep_random_allocator implements workshep_allocator {
      * @return array of integers
      */
     public static function available_numofreviews_list() {
-        $options = array();
-        $options[30] = 30;
-        $options[20] = 20;
-        $options[15] = 15;
-        for ($i = 10; $i >= 0; $i--) {
+
+        $options = [];
+
+        for ($i = 100; $i > 20; $i = $i - 10) {
             $options[$i] = $i;
         }
+
+        for ($i = 20; $i >= 0; $i--) {
+            $options[$i] = $i;
+        }
+
         return $options;
     }
 
@@ -692,7 +701,7 @@ class workshep_random_allocator implements workshep_allocator {
     protected function filter_current_assessments(&$newallocations, $assessments) {
         foreach ($assessments as $assessment) {
             $allocation     = array($assessment->reviewerid => $assessment->authorid);
-            $foundat        = array_keys($newallocations, $allocation);
+            $foundat        = moodle_array_keys_filter($newallocations, $allocation);
             $newallocations = array_diff_key($newallocations, array_flip($foundat));
         }
     }
@@ -751,6 +760,8 @@ class workshep_random_allocator_setting {
     public $assesswosubmission;
     /** @var bool add self-assessments */
     public $addselfassessment;
+    /** @var bool scheduled allocation status */
+    public $enablescheduled;
 
     /**
      * Use the factory method {@link self::instance_from_object()}

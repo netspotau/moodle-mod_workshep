@@ -52,12 +52,14 @@ class behat_mod_workshep extends behat_base {
         $switchphase = behat_context_helper::escape(get_string('switchphase' . $phasenumber, 'workshep'));
 
         $xpath = "//*[@class='userplan']/descendant::div[./span[contains(.,$phaseliteral)]]/".
-                "descendant-or-self::a[./i[@title=$switchphase]]";
+                "descendant-or-self::a[text()=$switchphase]"; // BASE-5117.
         $continue = $this->escape(get_string('continue'));
 
-        $this->execute('behat_general::click_link', $workshepname);
+        $this->execute('behat_navigation::i_am_on_page_instance', [$workshepname, 'workshep activity']);
 
-        $this->execute("behat_general::i_click_on", array($xpath, "xpath_element"));
+        $this->execute('behat_general::i_click_on_in_the', // BASE-4336.
+            array('a.action-icon', "css_element", $this->escape($xpath), "xpath_element")
+        );
 
         $this->execute("behat_forms::press_button", $continue);
     }
@@ -73,19 +75,19 @@ class behat_mod_workshep extends behat_base {
         $phasenumber = 0;
         switch ($phase) {
             case get_string('phasesetup', 'workshep'):
-                $phasenumber = workshop::PHASE_SETUP;
+                $phasenumber = workshep::PHASE_SETUP;
                 break;
             case get_string('phasesubmission', 'workshep'):
-                $phasenumber = workshop::PHASE_SUBMISSION;
+                $phasenumber = workshep::PHASE_SUBMISSION;
                 break;
             case get_string('phaseassessment', 'workshep'):
-                $phasenumber = workshop::PHASE_ASSESSMENT;
+                $phasenumber = workshep::PHASE_ASSESSMENT;
                 break;
             case get_string('phaseevaluation', 'workshep'):
-                $phasenumber = workshop::PHASE_EVALUATION;
+                $phasenumber = workshep::PHASE_EVALUATION;
                 break;
             case get_string('phaseclosed', 'workshep'):
-                $phasenumber = workshop::PHASE_CLOSED;
+                $phasenumber = workshep::PHASE_CLOSED;
                 break;
         }
         return $phasenumber;
@@ -95,6 +97,7 @@ class behat_mod_workshep extends behat_base {
     /**
      * Adds or edits a student workshep submission.
      *
+     * @When /^I add a submission in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:$/
      * @When /^I add a submission in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:"$/
      * @param string $workshepname
      * @param TableNode $table data to fill the submission form with, must contain 'Title'
@@ -102,9 +105,9 @@ class behat_mod_workshep extends behat_base {
     public function i_add_a_submission_in_workshep_as($workshepname, $table) {
         $workshepname = $this->escape($workshepname);
         $savechanges = $this->escape(get_string('savechanges'));
-        $xpath = "//div[contains(concat(' ', normalize-space(@class), ' '), ' ownsubmission ')]/descendant::*[@type='submit']";
+        $xpath = "//div[contains(concat(' ', normalize-space(@class), ' '), ' singlebutton ')]/descendant::*[@type='submit']";
 
-        $this->execute('behat_general::click_link', $workshepname);
+        $this->execute("behat_navigation::i_am_on_page_instance", [$workshepname, 'workshep activity']);
 
         $this->execute("behat_general::i_click_on", array($xpath, "xpath_element"));
 
@@ -116,16 +119,16 @@ class behat_mod_workshep extends behat_base {
     /**
      * Sets the workshep assessment form.
      *
+     * @When /^I edit assessment form in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:$/
      * @When /^I edit assessment form in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:"$/
      * @param string $workshepname
      * @param TableNode $table data to fill the submission form with, must contain 'Title'
      */
     public function i_edit_assessment_form_in_workshep_as($workshepname, $table) {
-
-        $this->execute('behat_general::click_link', $workshepname);
+        $this->execute("behat_navigation::i_am_on_page_instance", [$this->escape($workshepname), 'workshep activity']);
 
         $this->execute('behat_navigation::i_navigate_to_in_current_page_administration',
-            get_string('editassessmentform', 'workshep'));
+            get_string('assessmentform', 'workshep'));
 
         $this->execute("behat_forms::i_set_the_following_fields_to_these_values", $table);
 
@@ -135,6 +138,7 @@ class behat_mod_workshep extends behat_base {
     /**
      * Peer-assesses a workshep submission.
      *
+     * @When /^I assess submission "(?P<submission_string>(?:[^"]|\\")*)" in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:$/
      * @When /^I assess submission "(?P<submission_string>(?:[^"]|\\")*)" in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:"$/
      * @param string $submission
      * @param string $workshepname
@@ -148,7 +152,7 @@ class behat_mod_workshep extends behat_base {
         $assess = $this->escape(get_string('assess', 'workshep'));
         $saveandclose = $this->escape(get_string('saveandclose', 'workshep'));
 
-        $this->execute('behat_general::click_link', $workshepname);
+        $this->execute('behat_navigation::i_am_on_page_instance', [$workshepname, 'workshep activity']);
 
         $this->execute('behat_general::i_click_on_in_the',
             array($assess, "button", $xpath, "xpath_element")
@@ -216,7 +220,7 @@ class behat_mod_workshep extends behat_base {
 
      - Step "/^I set portfolio instance "(?P<portfolioinstance_string>(?:[^"]|\\")*)" to "(?P<value_string>(?:[^"]|\\")*)"$/" is already defined in behat_mod_workshep::i_set_portfolio_instance_to()
      - behat_mod_workshep::i_set_portfolio_instance_to()
-     - behat_mod_workshop::i_set_portfolio_instance_to()
+     - behat_mod_workshep::i_set_portfolio_instance_to()
 
      */
 }

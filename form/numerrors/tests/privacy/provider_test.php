@@ -15,19 +15,21 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Provides the {@link workshepform_rubric_privacy_provider_testcase} class.
+ * Provides the {@see workshepform_numerrors\privacy\provider_test} class.
  *
- * @package     workshepform_rubric
+ * @package     workshepform_numerrors
  * @category    test
  * @copyright   2018 David Mudrák <david@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace workshepform_numerrors\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
 use core_privacy\local\request\writer;
+use core_privacy\tests\provider_testcase;
 
 /**
  * Unit tests for the privacy API implementation.
@@ -35,12 +37,42 @@ use core_privacy\local\request\writer;
  * @copyright 2018 David Mudrák <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class workshepform_rubric_privacy_provider_testcase extends advanced_testcase {
+final class provider_test extends provider_testcase {
+
+    /** @var \testing_data_generator data generator. */
+    protected $generator;
+
+    /** @var \mod_workshep_generator workshep generator. */
+    protected $workshepgenerator;
+
+    /** @var \stdClass course data. */
+    protected $course1;
+
+    /** @var \stdClass student data. */
+    protected $student1;
+
+    /** @var \stdClass student data. */
+    protected $student2;
+
+    /** @var \stdClass first workshep in course1 */
+    protected $workshep11;
+
+    /** @var int ID of the submission in workshep11 by student1 */
+    protected $submission111;
+
+    /** @var int ID of the assessment of submission111 by student2 */
+    protected $assessment1112;
+
+    /** @var bool|int true or new id */
+    protected $dim1;
+
+    /** @var bool|int true or new id */
+    protected $dim2;
 
     /**
-     * Test {@link workshepform_rubric\privacy\provider::export_assessment_form()} implementation.
+     * Test {@link workshepform_numerrors\privacy\provider::export_assessment_form()} implementation.
      */
-    public function test_export_assessment_form() {
+    public function test_export_assessment_form(): void {
         global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -56,53 +88,26 @@ class workshepform_rubric_privacy_provider_testcase extends advanced_testcase {
         ]);
         $DB->set_field('workshep', 'phase', 50, ['id' => $this->workshep11->id]);
 
-        $this->dim1 = $DB->insert_record('workshepform_rubric', [
+        $this->dim1 = $DB->insert_record('workshepform_numerrors', [
             'workshepid' => $this->workshep11->id,
             'sort' => 1,
-            'description' => 'Criterion 1 description',
+            'description' => 'Assertion 1 description',
             'descriptionformat' => FORMAT_MARKDOWN,
+            'descriptiontrust' => 0,
+            'grade0' => 'No',
+            'grade1' => 'Yes',
+            'weight' => 1,
         ]);
 
-        $DB->insert_record('workshepform_rubric_levels', [
-            'dimensionid' => $this->dim1,
-            'grade' => 0,
-            'definition' => 'Missing',
-            'definitionformat' => FORMAT_PLAIN,
-        ]);
-
-        $DB->insert_record('workshepform_rubric_levels', [
-            'dimensionid' => $this->dim1,
-            'grade' => 1,
-            'definition' => 'Poor',
-            'definitionformat' => FORMAT_PLAIN,
-        ]);
-
-        $DB->insert_record('workshepform_rubric_levels', [
-            'dimensionid' => $this->dim1,
-            'grade' => 2,
-            'definition' => 'Good',
-            'definitionformat' => FORMAT_PLAIN,
-        ]);
-
-        $this->dim2 = $DB->insert_record('workshepform_rubric', [
+        $this->dim2 = $DB->insert_record('workshepform_numerrors', [
             'workshepid' => $this->workshep11->id,
             'sort' => 2,
-            'description' => 'Criterion 2 description',
+            'description' => 'Assertion 2 description',
             'descriptionformat' => FORMAT_MARKDOWN,
-        ]);
-
-        $DB->insert_record('workshepform_rubric_levels', [
-            'dimensionid' => $this->dim2,
-            'grade' => 0,
-            'definition' => 'Missing',
-            'definitionformat' => FORMAT_PLAIN,
-        ]);
-
-        $DB->insert_record('workshepform_rubric_levels', [
-            'dimensionid' => $this->dim2,
-            'grade' => 5,
-            'definition' => 'Great',
-            'definitionformat' => FORMAT_PLAIN,
+            'descriptiontrust' => 0,
+            'grade0' => 'Missing',
+            'grade1' => 'Present',
+            'weight' => 1,
         ]);
 
         $this->student1 = $this->generator->create_user();
@@ -116,19 +121,19 @@ class workshepform_rubric_privacy_provider_testcase extends advanced_testcase {
 
         $DB->insert_record('workshep_grades', [
             'assessmentid' => $this->assessment1112,
-            'strategy' => 'rubric',
+            'strategy' => 'numerrors',
             'dimensionid' => $this->dim1,
             'grade' => 1,
-            'peercomment' => '',
+            'peercomment' => 'Awesome',
             'peercommentformat' => FORMAT_PLAIN,
         ]);
 
         $DB->insert_record('workshep_grades', [
             'assessmentid' => $this->assessment1112,
-            'strategy' => 'rubric',
+            'strategy' => 'numerrors',
             'dimensionid' => $this->dim2,
-            'grade' => 5,
-            'peercomment' => '',
+            'grade' => 0,
+            'peercomment' => 'Missing',
             'peercommentformat' => FORMAT_PLAIN,
         ]);
 
@@ -144,12 +149,11 @@ class workshepform_rubric_privacy_provider_testcase extends advanced_testcase {
             get_string('myassessments', 'mod_workshep'),
             $this->assessment1112,
             get_string('assessmentform', 'mod_workshep'),
-            get_string('pluginname', 'workshepform_rubric'),
+            get_string('pluginname', 'workshepform_numerrors'),
         ]);
 
-        $this->assertEquals('Criterion 1 description', $form->criteria[0]->description);
-        $this->assertEquals(3, count($form->criteria[0]->levels));
-        $this->assertEquals(2, count($form->criteria[1]->levels));
-        $this->assertEquals(5, $form->criteria[1]->grade);
+        $this->assertEquals('Assertion 1 description', $form->assertions[0]->description);
+        $this->assertEquals(0, $form->assertions[1]->grade);
+        $this->assertEquals('Missing', $form->assertions[1]->peercomment);
     }
 }

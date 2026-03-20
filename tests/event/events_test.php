@@ -23,23 +23,26 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace mod_workshep\event;
+
+use testable_workshep;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 require_once($CFG->dirroot . '/mod/workshep/lib.php'); // Include the code to test.
 require_once($CFG->dirroot . '/mod/workshep/locallib.php'); // Include the code to test.
-require_once($CFG->dirroot . '/lib/cronlib.php'); // Include the code to test.
-require_once(__DIR__ . '/fixtures/testable.php');
+require_once($CFG->dirroot . '/mod/workshep/tests/fixtures/testable.php'); // BASE-4539.
 
 
 /**
  * Test cases for the internal workshep api
  */
-class mod_workshep_events_testcase extends advanced_testcase {
+final class events_test extends \advanced_testcase {
 
-    /** @var stdClass $workshep Basic workshep data stored in an object. */
+    /** @var \stdClass $workshep Basic workshep data stored in an object. */
     protected $workshep;
-    /** @var stdClass $course Generated Random Course. */
+    /** @var \stdClass $course Generated Random Course. */
     protected $course;
     /** @var stdClass mod info */
     protected $cm;
@@ -49,7 +52,7 @@ class mod_workshep_events_testcase extends advanced_testcase {
     /**
      * Set up the testing environment.
      */
-    protected function setUp() {
+    protected function setUp(): void {
         parent::setUp();
         $this->setAdminUser();
 
@@ -57,10 +60,10 @@ class mod_workshep_events_testcase extends advanced_testcase {
         $this->course = $this->getDataGenerator()->create_course();
         $this->workshep = $this->getDataGenerator()->create_module('workshep', array('course' => $this->course));
         $this->cm = get_coursemodule_from_instance('workshep', $this->workshep->id);
-        $this->context = context_module::instance($this->cm->id);
+        $this->context = \context_module::instance($this->cm->id);
     }
 
-    protected function tearDown() {
+    protected function tearDown(): void {
         $this->workshep = null;
         $this->course = null;
         $this->cm = null;
@@ -71,7 +74,7 @@ class mod_workshep_events_testcase extends advanced_testcase {
     /**
      * This event is triggered in view.php and workshep/lib.php through the function workshep_cron().
      */
-    public function test_phase_switched_event() {
+    public function test_phase_switched_event(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -91,16 +94,12 @@ class mod_workshep_events_testcase extends advanced_testcase {
         $events = $sink->get_events();
         $event = reset($events);
 
-        // Check that the legacy log data is valid.
-        $expected = array($this->course->id, 'workshep', 'update switch phase', 'view.php?id=' . $this->cm->id,
-            $newphase, $this->cm->id);
-        $this->assertEventLegacyLogData($expected, $event);
         $this->assertEventContextNotUsed($event);
 
         $sink->close();
     }
 
-    public function test_assessment_evaluated() {
+    public function test_assessment_evaluated(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -120,13 +119,13 @@ class mod_workshep_events_testcase extends advanced_testcase {
 
         $this->assertInstanceOf('\mod_workshep\event\assessment_evaluated', $event);
         $this->assertEquals('workshep_aggregations', $event->objecttable);
-        $this->assertEquals(context_module::instance($cm->id), $event->get_context());
+        $this->assertEquals(\context_module::instance($cm->id), $event->get_context());
         $this->assertEventContextNotUsed($event);
 
         $sink->close();
     }
 
-    public function test_assessment_reevaluated() {
+    public function test_assessment_reevaluated(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -146,10 +145,7 @@ class mod_workshep_events_testcase extends advanced_testcase {
 
         $this->assertInstanceOf('\mod_workshep\event\assessment_reevaluated', $event);
         $this->assertEquals('workshep_aggregations', $event->objecttable);
-        $this->assertEquals(context_module::instance($cm->id), $event->get_context());
-        $expected = array($this->course->id, 'workshep', 'update aggregate grade',
-            'view.php?id=' . $event->get_context()->instanceid, $event->objectid, $event->get_context()->instanceid);
-        $this->assertEventLegacyLogData($expected, $event);
+        $this->assertEquals(\context_module::instance($cm->id), $event->get_context());
         $this->assertEventContextNotUsed($event);
 
         $sink->close();
@@ -158,7 +154,7 @@ class mod_workshep_events_testcase extends advanced_testcase {
     /**
      * There is no api involved so the best we can do is test legacy data by triggering event manually.
      */
-    public function test_aggregate_grades_reset_event() {
+    public function test_aggregate_grades_reset_event(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -174,22 +170,17 @@ class mod_workshep_events_testcase extends advanced_testcase {
         $events = $sink->get_events();
         $event = reset($events);
 
-        // Check that the legacy log data is valid.
-        $expected = array($this->course->id, 'workshep', 'update clear aggregated grade', 'view.php?id=' . $this->cm->id,
-            $this->workshep->id, $this->cm->id);
-        $this->assertEventLegacyLogData($expected, $event);
-
         $sink->close();
     }
 
     /**
      * There is no api involved so the best we can do is test legacy data by triggering event manually.
      */
-    public function test_instances_list_viewed_event() {
+    public function test_instances_list_viewed_event(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
-        $context = context_course::instance($this->course->id);
+        $context = \context_course::instance($this->course->id);
 
         $event = \mod_workshep\event\course_module_instance_list_viewed::create(array('context' => $context));
 
@@ -199,9 +190,6 @@ class mod_workshep_events_testcase extends advanced_testcase {
         $events = $sink->get_events();
         $event = reset($events);
 
-        // Check that the legacy log data is valid.
-        $expected = array($this->course->id, 'workshep', 'view all', 'index.php?id=' . $this->course->id, '');
-        $this->assertEventLegacyLogData($expected, $event);
         $this->assertEventContextNotUsed($event);
 
         $sink->close();
@@ -210,7 +198,7 @@ class mod_workshep_events_testcase extends advanced_testcase {
     /**
      * There is no api involved so the best we can do is test legacy data by triggering event manually.
      */
-    public function test_submission_created_event() {
+    public function test_submission_created_event(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -234,82 +222,6 @@ class mod_workshep_events_testcase extends advanced_testcase {
         $events = $sink->get_events();
         $event = reset($events);
 
-        // Check that the legacy log data is valid.
-        $expected = array($this->course->id, 'workshep', 'add submission',
-            'submission.php?cmid=' . $this->cm->id . '&id=' . $submissionid, $submissionid, $this->cm->id);
-        $this->assertEventLegacyLogData($expected, $event);
-        $this->assertEventContextNotUsed($event);
-
-        $sink->close();
-    }
-
-    /**
-     * There is no api involved so the best we can do is test legacy data by triggering event manually.
-     */
-    public function test_submission_updated_event() {
-        $this->resetAfterTest();
-        $this->setAdminUser();
-
-        $user = $this->getDataGenerator()->create_user();
-        $submissionid = 48;
-
-        $event = \mod_workshep\event\submission_updated::create(array(
-                'objectid'      => $submissionid,
-                'context'       => $this->context,
-                'courseid'      => $this->course->id,
-                'relateduserid' => $user->id,
-                'other'         => array(
-                    'submissiontitle' => 'The submission title'
-                )
-            )
-        );
-
-        // Trigger and capture the event.
-        $sink = $this->redirectEvents();
-        $event->trigger();
-        $events = $sink->get_events();
-        $event = reset($events);
-
-        // Check that the legacy log data is valid.
-        $expected = array($this->course->id, 'workshep', 'update submission',
-            'submission.php?cmid=' . $this->cm->id . '&id=' . $submissionid, $submissionid, $this->cm->id);
-        $this->assertEventLegacyLogData($expected, $event);
-        $this->assertEventContextNotUsed($event);
-
-        $sink->close();
-    }
-
-    /**
-     * There is no api involved so the best we can do is test legacy data by triggering event manually.
-     */
-    public function test_submission_viewed_event() {
-        $this->resetAfterTest();
-        $this->setAdminUser();
-
-        $user = $this->getDataGenerator()->create_user();
-        $submissionid = 48;
-
-        $event = \mod_workshep\event\submission_viewed::create(array(
-                'objectid'      => $submissionid,
-                'context'       => $this->context,
-                'courseid'      => $this->course->id,
-                'relateduserid' => $user->id,
-                'other'         => array(
-                    'workshepid' => $this->workshep->id
-                )
-            )
-        );
-
-        // Trigger and capture the event.
-        $sink = $this->redirectEvents();
-        $event->trigger();
-        $events = $sink->get_events();
-        $event = reset($events);
-
-        // Check that the legacy log data is valid.
-        $expected = array($this->course->id, 'workshep', 'view submission',
-            'submission.php?cmid=' . $this->cm->id . '&id=' . $submissionid, $submissionid, $this->cm->id);
-        $this->assertEventLegacyLogData($expected, $event);
         $this->assertEventContextNotUsed($event);
 
         $sink->close();

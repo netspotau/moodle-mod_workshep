@@ -24,15 +24,21 @@
  * @since      Moodle 3.4
  */
 
+namespace mod_workshep\external;
+
+use core_external\external_api;
+use externallib_advanced_testcase;
+use workshep;
+use mod_workshep_external;
+use mod_workshep\external\workshep_summary_exporter;
+use mod_workshep\external\submission_exporter;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
 require_once($CFG->dirroot . '/webservice/tests/helpers.php');
 require_once($CFG->dirroot . '/mod/workshep/lib.php');
-
-use mod_workshep\external\workshep_summary_exporter;
-use mod_workshep\external\submission_exporter;
 
 /**
  * Workshop module external functions tests
@@ -43,7 +49,7 @@ use mod_workshep\external\submission_exporter;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 3.4
  */
-class mod_workshep_external_testcase extends externallib_advanced_testcase {
+final class external_test extends externallib_advanced_testcase {
 
     /** @var stdClass course object */
     private $course;
@@ -61,17 +67,26 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     private $studentrole;
     /** @var stdClass teacher role object */
     private $teacherrole;
+    /** @var \stdClass student object. */
+    private $anotherstudentg1;
+    /** @var \stdClass student object. */
+    private $anotherstudentg2;
+    /** @var \stdClass group object. */
+    private $group1;
+    /** @var \stdClass group object. */
+    private $group2;
 
     /**
      * Set up for every test
      */
-    public function setUp() {
+    public function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest();
         $this->setAdminUser();
 
         // Setup test data.
-        $course = new stdClass();
+        $course = new \stdClass();
         $course->groupmode = SEPARATEGROUPS;
         $course->groupmodeforce = true;
         $this->course = $this->getDataGenerator()->create_course($course);
@@ -81,7 +96,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
                 'overallfeedbackfiles' => 1,
             )
         );
-        $this->context = context_module::instance($this->workshep->cmid);
+        $this->context = \context_module::instance($this->workshep->cmid);
         $this->cm = get_coursemodule_from_instance('workshep', $this->workshep->id);
 
         // Add grading strategy data (accumulative is the default).
@@ -123,13 +138,13 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_mod_workshep_get_worksheps_by_courses
      */
-    public function test_mod_workshep_get_worksheps_by_courses() {
+    public function test_mod_workshep_get_worksheps_by_courses(): void {
 
         // Create additional course.
         $course2 = self::getDataGenerator()->create_course();
 
         // Second workshep.
-        $record = new stdClass();
+        $record = new \stdClass();
         $record->course = $course2->id;
         $workshep2 = self::getDataGenerator()->create_module('workshep', $record);
 
@@ -157,22 +172,28 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         $workshep1->coursemodule = $workshep1->cmid;
         $workshep1->introformat = 1;
         $workshep1->introfiles = [];
+        $workshep1->lang = '';
         $workshep1->instructauthorsfiles = [];
         $workshep1->instructauthorsformat = 1;
         $workshep1->instructreviewersfiles = [];
         $workshep1->instructreviewersformat = 1;
         $workshep1->conclusionfiles = [];
         $workshep1->conclusionformat = 1;
+        $workshep1->submissiontypetext = 1;
+        $workshep1->submissiontypefile = 1;
 
         $workshep2->coursemodule = $workshep2->cmid;
         $workshep2->introformat = 1;
         $workshep2->introfiles = [];
+        $workshep2->lang = '';
         $workshep2->instructauthorsfiles = [];
         $workshep2->instructauthorsformat = 1;
         $workshep2->instructreviewersfiles = [];
         $workshep2->instructreviewersformat = 1;
         $workshep2->conclusionfiles = [];
         $workshep2->conclusionformat = 1;
+        $workshep2->submissiontypetext = 1;
+        $workshep2->submissiontypefile = 1;
 
         foreach ($expectedfields as $field) {
             if (!empty($properties[$field]) && $properties[$field]['type'] == PARAM_BOOL) {
@@ -217,7 +238,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test mod_workshep_get_workshep_access_information for students.
      */
-    public function test_mod_workshep_get_workshep_access_information_student() {
+    public function test_mod_workshep_get_workshep_access_information_student(): void {
 
         self::setUser($this->student);
         $result = mod_workshep_external::get_workshep_access_information($this->workshep->id);
@@ -293,7 +314,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test mod_workshep_get_workshep_access_information for teachers.
      */
-    public function test_mod_workshep_get_workshep_access_information_teacher() {
+    public function test_mod_workshep_get_workshep_access_information_teacher(): void {
 
         self::setUser($this->teacher);
         $result = mod_workshep_external::get_workshep_access_information($this->workshep->id);
@@ -313,8 +334,8 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         }
 
         // Now, specific functionalities.
-        $this->assertTrue($result['creatingsubmissionallowed']); // Allow because of submit on behalf of others process.
-        $this->assertTrue($result['modifyingsubmissionallowed']); // Allow because of submit on behalf of others process.
+        $this->assertTrue($result['creatingsubmissionallowed']); // BASE-5468: Allow because of submit on behalf of others process.
+        $this->assertTrue($result['modifyingsubmissionallowed']); // BASE-5468: Allow because of submit on behalf of others process.
         $this->assertFalse($result['assessingallowed']);
         $this->assertFalse($result['assessingexamplesallowed']);
     }
@@ -322,7 +343,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test mod_workshep_get_user_plan for students.
      */
-    public function test_mod_workshep_get_user_plan_student() {
+    public function test_mod_workshep_get_user_plan_student(): void {
 
         self::setUser($this->student);
         $result = mod_workshep_external::get_user_plan($this->workshep->id);
@@ -347,7 +368,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test mod_workshep_get_user_plan for teachers.
      */
-    public function test_mod_workshep_get_user_plan_teacher() {
+    public function test_mod_workshep_get_user_plan_teacher(): void {
 
         self::setUser($this->teacher);
         $result = mod_workshep_external::get_user_plan($this->workshep->id);
@@ -392,7 +413,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_view_workshep invalid id.
      */
-    public function test_view_workshep_invalid_id() {
+    public function test_view_workshep_invalid_id(): void {
         $this->expectException('moodle_exception');
         mod_workshep_external::view_workshep(0);
     }
@@ -400,7 +421,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_view_workshep user not enrolled.
      */
-    public function test_view_workshep_user_not_enrolled() {
+    public function test_view_workshep_user_not_enrolled(): void {
         // Test not-enrolled user.
         $usernotenrolled = self::getDataGenerator()->create_user();
         $this->setUser($usernotenrolled);
@@ -411,7 +432,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_view_workshep user student.
      */
-    public function test_view_workshep_user_student() {
+    public function test_view_workshep_user_student(): void {
         // Test user with full capabilities.
         $this->setUser($this->student);
 
@@ -438,13 +459,13 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_view_workshep user missing capabilities.
      */
-    public function test_view_workshep_user_missing_capabilities() {
+    public function test_view_workshep_user_missing_capabilities(): void {
         // Test user with no capabilities.
         // We need a explicit prohibit since this capability is only defined in authenticated user and guest roles.
         assign_capability('mod/workshep:view', CAP_PROHIBIT, $this->studentrole->id, $this->context->id);
         // Empty all the caches that may be affected  by this change.
         accesslib_clear_all_caches_for_unit_testing();
-        course_modinfo::clear_instance_cache();
+        \course_modinfo::clear_instance_cache();
 
         $this->setUser($this->student);
         $this->expectException('moodle_exception');
@@ -454,7 +475,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_add_submission.
      */
-    public function test_add_submission() {
+    public function test_add_submission(): void {
         $fs = get_file_storage();
 
         // Test user with full capabilities.
@@ -465,7 +486,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
 
         // Create a file in a draft area for inline attachments.
         $draftidinlineattach = file_get_unused_draft_itemid();
-        $usercontext = context_user::instance($this->student->id);
+        $usercontext = \context_user::instance($this->student->id);
         $filenameimg = 'shouldbeanimage.txt';
         $filerecordinline = array(
             'contextid' => $usercontext->id,
@@ -525,7 +546,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_add_submission invalid phase.
      */
-    public function test_add_submission_invalid_phase() {
+    public function test_add_submission_invalid_phase(): void {
         $this->setUser($this->student);
 
         $this->expectException('moodle_exception');
@@ -535,7 +556,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_add_submission empty title.
      */
-    public function test_add_submission_empty_title() {
+    public function test_add_submission_empty_title(): void {
         $this->setUser($this->student);
 
         // Switch to submission phase.
@@ -549,23 +570,36 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_add_submission already added.
      */
-    public function test_add_submission_already_added() {
+    public function test_add_submission_already_added(): void {
         $this->setUser($this->student);
+
+        $usercontext = \context_user::instance($this->student->id);
+        $fs = get_file_storage();
+        $draftidattach = file_get_unused_draft_itemid();
+        $filerecordattach = [
+            'contextid' => $usercontext->id,
+            'component' => 'user',
+            'filearea'  => 'draft',
+            'itemid'    => $draftidattach,
+            'filepath'  => '/',
+            'filename'  => 'attachement.txt'
+        ];
+        $fs->create_file_from_string($filerecordattach, 'simple text attachment');
 
         // Switch to submission phase.
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshep->switch_phase(workshep::PHASE_SUBMISSION);
 
         // Create the submission.
-        $result = mod_workshep_external::add_submission($this->workshep->id, 'My submission');
+        $result = mod_workshep_external::add_submission($this->workshep->id, 'My submission', '', FORMAT_MOODLE, 0, $draftidattach);
         $result = external_api::clean_returnvalue(mod_workshep_external::add_submission_returns(), $result);
 
         // Try to create it again.
-        $result = mod_workshep_external::add_submission($this->workshep->id, 'My submission');
+        $result = mod_workshep_external::add_submission($this->workshep->id, 'My submission', '', FORMAT_MOODLE, 0, $draftidattach);
         $result = external_api::clean_returnvalue(mod_workshep_external::add_submission_returns(), $result);
         $this->assertFalse($result['status']);
         $this->assertArrayNotHasKey('submissionid', $result);
-        $this->assertCount(1, $result['warnings']); // BASE-2801: Multiple submissions per user are not allowed.
+        $this->assertCount(1, $result['warnings']);
         $this->assertEquals('fielderror', $result['warnings'][0]['warningcode']);
         $this->assertEquals('title', $result['warnings'][0]['item']);
     }
@@ -586,7 +620,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         // Create a file in a draft area for inline attachments.
         $fs = get_file_storage();
         $draftidinlineattach = file_get_unused_draft_itemid();
-        $usercontext = context_user::instance($this->student->id);
+        $usercontext = \context_user::instance($user->id);
         $filenameimg = 'shouldbeanimage.txt';
         $filerecordinline = array(
             'contextid' => $usercontext->id,
@@ -618,7 +652,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_update_submission.
      */
-    public function test_update_submission() {
+    public function test_update_submission(): void {
 
         // Create the submission that will be updated.
         $submissionid = $this->create_test_submission($this->student);
@@ -632,7 +666,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         // Create a different file in a draft area for inline attachments.
         $fs = get_file_storage();
         $draftidinlineattach = file_get_unused_draft_itemid();
-        $usercontext = context_user::instance($this->student->id);
+        $usercontext = \context_user::instance($this->student->id);
         $filenameimg = 'shouldbeanimage_new.txt';
         $filerecordinline = array(
             'contextid' => $usercontext->id,
@@ -688,7 +722,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_update_submission belonging to other user.
      */
-    public function test_update_submission_of_other_user() {
+    public function test_update_submission_of_other_user(): void {
         // Create the submission that will be updated.
         $submissionid = $this->create_test_submission($this->student);
 
@@ -701,7 +735,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_update_submission invalid phase.
      */
-    public function test_update_submission_invalid_phase() {
+    public function test_update_submission_invalid_phase(): void {
         // Create the submission that will be updated.
         $submissionid = $this->create_test_submission($this->student);
 
@@ -718,7 +752,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_update_submission empty title.
      */
-    public function test_update_submission_empty_title() {
+    public function test_update_submission_empty_title(): void {
         // Create the submission that will be updated.
         $submissionid = $this->create_test_submission($this->student);
 
@@ -731,7 +765,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_delete_submission.
      */
-    public function test_delete_submission() {
+    public function test_delete_submission(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -761,7 +795,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_delete_submission_with_assessments.
      */
-    public function test_delete_submission_with_assessments() {
+    public function test_delete_submission_with_assessments(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -780,7 +814,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_delete_submission_invalid_phase.
      */
-    public function test_delete_submission_invalid_phase() {
+    public function test_delete_submission_invalid_phase(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -797,7 +831,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_delete_submission_as_teacher.
      */
-    public function test_delete_submission_as_teacher() {
+    public function test_delete_submission_as_teacher(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -812,7 +846,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_delete_submission_other_user.
      */
-    public function test_delete_submission_other_user() {
+    public function test_delete_submission_other_user(): void {
 
         $anotheruser = self::getDataGenerator()->create_user();
         $this->getDataGenerator()->enrol_user($anotheruser->id, $this->course->id, $this->studentrole->id, 'manual');
@@ -827,11 +861,11 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submissions_student.
      */
-    public function test_get_submissions_student() {
+    public function test_get_submissions_student(): void {
 
         // Create a couple of submissions with files.
         $firstsubmissionid = $this->create_test_submission($this->student);  // Create submission with files.
-        $secondsubmissionid = $this->create_test_submission($this->anotherstudentg1->id);
+        $secondsubmissionid = $this->create_test_submission($this->anotherstudentg1);
 
         $this->setUser($this->student);
         $result = mod_workshep_external::get_submissions($this->workshep->id);
@@ -857,7 +891,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submissions_published_student.
      */
-    public function test_get_submissions_published_student() {
+    public function test_get_submissions_published_student(): void {
 
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshep->switch_phase(workshep::PHASE_CLOSED);
@@ -885,14 +919,14 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submissions_from_student_with_feedback_from_teacher.
      */
-    public function test_get_submissions_from_student_with_feedback_from_teacher() {
+    public function test_get_submissions_from_student_with_feedback_from_teacher(): void {
         global $DB;
 
         // Create a couple of submissions with files.
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
         $submissionid = $workshepgenerator->create_submission($this->workshep->id, $this->student->id);
         // Create teacher feedback for submission.
-        $record = new stdclass();
+        $record = new \stdClass();
         $record->id = $submissionid;
         $record->gradeover = 9;
         $record->gradeoverby = $this->teacher->id;
@@ -905,7 +939,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         assign_capability('mod/workshep:viewallsubmissions', CAP_PROHIBIT, $this->teacher->id, $this->context->id);
         // Empty all the caches that may be affected  by this change.
         accesslib_clear_all_caches_for_unit_testing();
-        course_modinfo::clear_instance_cache();
+        \course_modinfo::clear_instance_cache();
 
         $this->setUser($this->teacher);
         $result = mod_workshep_external::get_submissions($this->workshep->id, $this->student->id);
@@ -918,7 +952,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submissions_from_students_as_teacher.
      */
-    public function test_get_submissions_from_students_as_teacher() {
+    public function test_get_submissions_from_students_as_teacher(): void {
 
         // Create a couple of submissions with files.
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
@@ -952,7 +986,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submission_student.
      */
-    public function test_get_submission_student() {
+    public function test_get_submission_student(): void {
 
         // Create a couple of submissions with files.
         $firstsubmissionid = $this->create_test_submission($this->student);  // Create submission with files.
@@ -988,7 +1022,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submission_i_reviewed.
      */
-    public function test_get_submission_i_reviewed() {
+    public function test_get_submission_i_reviewed(): void {
 
         // Create a couple of submissions with files.
         $firstsubmissionid = $this->create_test_submission($this->student);  // Create submission with files.
@@ -1014,7 +1048,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submission_other_student.
      */
-    public function test_get_submission_other_student() {
+    public function test_get_submission_other_student(): void {
 
         // Create a couple of submissions with files.
         $firstsubmissionid = $this->create_test_submission($this->student);  // Create submission with files.
@@ -1027,7 +1061,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submission_published_student.
      */
-    public function test_get_submission_published_student() {
+    public function test_get_submission_published_student(): void {
 
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshep->switch_phase(workshep::PHASE_CLOSED);
@@ -1058,7 +1092,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submission_from_student_with_feedback_from_teacher.
      */
-    public function test_get_submission_from_student_with_feedback_from_teacher() {
+    public function test_get_submission_from_student_with_feedback_from_teacher(): void {
         global $DB;
 
         // Create a couple of submissions with files.
@@ -1067,7 +1101,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshep->switch_phase(workshep::PHASE_CLOSED);
         // Create teacher feedback for submission.
-        $record = new stdclass();
+        $record = new \stdClass();
         $record->id = $submissionid;
         $record->gradeover = 9;
         $record->gradeoverby = $this->teacher->id;
@@ -1109,7 +1143,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_get_submission_from_students_as_teacher.
      */
-    public function test_get_submission_from_students_as_teacher() {
+    public function test_get_submission_from_students_as_teacher(): void {
         // Create a couple of submissions with files.
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
         $submissionid1 = $workshepgenerator->create_submission($this->workshep->id, $this->student->id);
@@ -1130,7 +1164,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_submission_assessments_student.
      */
-    public function test_get_submission_assessments_student() {
+    public function test_get_submission_assessments_student(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -1165,7 +1199,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_submission_assessments_invalid_phase.
      */
-    public function test_get_submission_assessments_invalid_phase() {
+    public function test_get_submission_assessments_invalid_phase(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -1183,7 +1217,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_submission_assessments_teacher.
      */
-    public function test_get_submission_assessments_teacher() {
+    public function test_get_submission_assessments_teacher(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -1205,7 +1239,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_author.
      */
-    public function test_get_assessment_author() {
+    public function test_get_assessment_author(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1231,7 +1265,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_reviewer.
      */
-    public function test_get_assessment_reviewer() {
+    public function test_get_assessment_reviewer(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1257,7 +1291,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_teacher.
      */
-    public function test_get_assessment_teacher() {
+    public function test_get_assessment_teacher(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1281,7 +1315,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_student_invalid_phase.
      */
-    public function test_get_assessment_student_invalid_phase() {
+    public function test_get_assessment_student_invalid_phase(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1302,7 +1336,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_student_invalid_user.
      */
-    public function test_get_assessment_student_invalid_user() {
+    public function test_get_assessment_student_invalid_user(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1325,7 +1359,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_form_definition_reviewer_new_assessment.
      */
-    public function test_get_assessment_form_definition_reviewer_new_assessment() {
+    public function test_get_assessment_form_definition_reviewer_new_assessment(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1358,7 +1392,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_form_definition_teacher_new_assessment.
      */
-    public function test_get_assessment_form_definition_teacher_new_assessment() {
+    public function test_get_assessment_form_definition_teacher_new_assessment(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1379,7 +1413,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_assessment_form_definition_invalid_phase.
      */
-    public function test_get_assessment_form_definition_invalid_phase() {
+    public function test_get_assessment_form_definition_invalid_phase(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1389,7 +1423,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         $assessmentid = $workshep->add_allocation($submission, $this->anotherstudentg1->id);
 
         $workshep->switch_phase(workshep::PHASE_EVALUATION);
-        $this->setUser($this->student);
+        $this->setUser($this->anotherstudentg2); // BASE-5468.
         // Since we are not reviewers we can't see the assessment until the workshep is closed.
         $this->expectException('moodle_exception');
         mod_workshep_external::get_assessment_form_definition($assessmentid);
@@ -1398,7 +1432,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_reviewer_assessments.
      */
-    public function test_get_reviewer_assessments() {
+    public function test_get_reviewer_assessments(): void {
 
         // Create the submission.
         $submissionid1 = $this->create_test_submission($this->student);
@@ -1435,12 +1469,13 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         $result = mod_workshep_external::get_reviewer_assessments($this->workshep->id, $this->student->id);
         $result = external_api::clean_returnvalue(mod_workshep_external::get_reviewer_assessments_returns(), $result);
         $this->assertCount(2, $result['assessments']);
+        $this->assertArrayNotHasKey('feedbackreviewer', $result['assessments'][0]);
     }
 
     /**
      * Test get_reviewer_assessments_other_student.
      */
-    public function test_get_reviewer_assessments_other_student() {
+    public function test_get_reviewer_assessments_other_student(): void {
 
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshep->switch_phase(workshep::PHASE_ASSESSMENT);
@@ -1453,7 +1488,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_reviewer_assessments_invalid_phase.
      */
-    public function test_get_reviewer_assessments_invalid_phase() {
+    public function test_get_reviewer_assessments_invalid_phase(): void {
 
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshep->switch_phase(workshep::PHASE_SUBMISSION);
@@ -1466,7 +1501,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test update_assessment.
      */
-    public function test_update_assessment() {
+    public function test_update_assessment(): void {
 
         // Create the submission.
         $submissionid = $this->create_test_submission($this->anotherstudentg1);
@@ -1511,7 +1546,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
         // Create a file in a draft area for inline attachments.
         $fs = get_file_storage();
         $draftidinlineattach = file_get_unused_draft_itemid();
-        $usercontext = context_user::instance($this->student->id);
+        $usercontext = \context_user::instance($this->student->id);
         $filenameimg = 'shouldbeanimage.txt';
         $filerecordinline = array(
             'contextid' => $usercontext->id,
@@ -1570,7 +1605,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_grades.
      */
-    public function test_get_grades() {
+    public function test_get_grades(): void {
 
         $timenow = time();
         $submissiongrade = array(
@@ -1620,7 +1655,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_grades_other_student.
      */
-    public function test_get_grades_other_student() {
+    public function test_get_grades_other_student(): void {
 
         // Create the submission that will be deleted.
         $submissionid = $this->create_test_submission($this->student);
@@ -1635,7 +1670,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_assessment.
      */
-    public function test_evaluate_assessment() {
+    public function test_evaluate_assessment(): void {
         global $DB;
 
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
@@ -1679,7 +1714,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_assessment_ignore_parameters.
      */
-    public function test_evaluate_assessment_ignore_parameters() {
+    public function test_evaluate_assessment_ignore_parameters(): void {
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
         $submissionid = $workshepgenerator->create_submission($this->workshep->id, $this->student->id);
         $assessmentid = $workshepgenerator->create_assessment($submissionid, $this->anotherstudentg1->id, array(
@@ -1709,7 +1744,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_assessment_no_permissions.
      */
-    public function test_evaluate_assessment_no_permissions() {
+    public function test_evaluate_assessment_no_permissions(): void {
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
         $submissionid = $workshepgenerator->create_submission($this->workshep->id, $this->student->id);
         $assessmentid = $workshepgenerator->create_assessment($submissionid, $this->anotherstudentg1->id, array(
@@ -1729,7 +1764,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_grades_report.
      */
-    public function test_get_grades_report() {
+    public function test_get_grades_report(): void {
 
         $workshep = new workshep($this->workshep, $this->cm, $this->course);
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
@@ -1779,7 +1814,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_grades_report_invalid_phase.
      */
-    public function test_get_grades_report_invalid_phase() {
+    public function test_get_grades_report_invalid_phase(): void {
         $this->setUser($this->teacher);
         $this->expectException('moodle_exception');
         $this->expectExceptionMessage(get_string('nothingfound', 'workshep'));
@@ -1789,7 +1824,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test get_grades_report_missing_permissions.
      */
-    public function test_get_grades_report_missing_permissions() {
+    public function test_get_grades_report_missing_permissions(): void {
         $this->setUser($this->student);
         $this->expectException('required_capability_exception');
         mod_workshep_external::get_grades_report($this->workshep->id);
@@ -1798,7 +1833,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test test_view_submission.
      */
-    public function test_view_submission() {
+    public function test_view_submission(): void {
 
         // Create a couple of submissions with files.
         $firstsubmissionid = $this->create_test_submission($this->student);  // Create submission with files.
@@ -1828,7 +1863,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_submission.
      */
-    public function test_evaluate_submission() {
+    public function test_evaluate_submission(): void {
         global $DB;
 
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
@@ -1856,7 +1891,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_submission_invalid_phase_for_override.
      */
-    public function test_evaluate_submission_invalid_phase_for_override() {
+    public function test_evaluate_submission_invalid_phase_for_override(): void {
         global $DB;
 
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
@@ -1881,7 +1916,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_submission_no_permissions.
      */
-    public function test_evaluate_submission_no_permissions() {
+    public function test_evaluate_submission_no_permissions(): void {
 
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
         $submissionid = $workshepgenerator->create_submission($this->workshep->id, $this->student->id);
@@ -1900,7 +1935,7 @@ class mod_workshep_external_testcase extends externallib_advanced_testcase {
     /**
      * Test evaluate_submission_invalid_grade.
      */
-    public function test_evaluate_submission_invalid_grade() {
+    public function test_evaluate_submission_invalid_grade(): void {
 
         $workshepgenerator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
         $submissionid = $workshepgenerator->create_submission($this->workshep->id, $this->student->id);

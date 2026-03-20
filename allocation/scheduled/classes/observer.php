@@ -81,4 +81,41 @@ class observer {
         }
         return true;
     }
+
+    /**
+     * Called when the '\mod_workshep\event\phase_automatically_switched' event is triggered.
+     *
+     * This observer handles the phase_automatically_switched event triggered when phaseswithassesment is active
+     * and the phase is automatically switched.
+     *
+     * When this happens, this situation can occur:
+     *
+     *     * cron_task transition the workshep to PHASE_ASESSMENT.
+     *     * scheduled_allocator task executes.
+     *     * scheduled_allocator task cannot allocate parcipants because workshep is not
+     *       in PHASE_SUBMISSION state (it's in PHASE_ASSESMENT).
+     *
+     * @param \mod_workshep\event\phase_automatically_switched $event
+     */
+    public static function phase_automatically_switched(\mod_workshep\event\phase_automatically_switched $event) {
+        if ($event->other['previousworkshepphase'] != \workshep::PHASE_SUBMISSION) {
+            return;
+        }
+        if ($event->other['targetworkshepphase'] != \workshep::PHASE_ASSESSMENT) {
+            return;
+        }
+
+        $workshep = $event->get_record_snapshot('workshep', $event->objectid);
+        $course   = $event->get_record_snapshot('course', $event->courseid);
+        $cm       = $event->get_record_snapshot('course_modules', $event->contextinstanceid);
+
+        $workshep = new \workshep($workshep, $cm, $course);
+        if ($workshep->phase != \workshep::PHASE_ASSESSMENT) {
+            return;
+        }
+
+        $allocator = $workshep->allocator_instance('scheduled');
+        // We know that we come from PHASE_SUBMISSION so we tell the allocator not to test for the PHASE_SUBMISSION state.
+        $allocator->execute(false);
+    }
 }

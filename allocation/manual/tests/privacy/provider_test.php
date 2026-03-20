@@ -15,13 +15,14 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Provides the {@link workshepallocation_manual_privacy_provider_testcase} class.
+ * Provides the {@see workshepallocation_manual\privacy\provider_test} class.
  *
  * @package     workshepallocation_manual
  * @category    test
  * @copyright   2018 David Mudrák <david@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace workshepallocation_manual\privacy;
 
 use core_privacy\local\request\writer;
 
@@ -33,12 +34,12 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright 2018 David Mudrák <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class workshepallocation_manual_privacy_provider_testcase extends \core_privacy\tests\provider_testcase {
+final class provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * When no preference exists, there should be no export.
      */
-    public function test_no_preference() {
+    public function test_no_preference(): void {
         global $USER;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -50,7 +51,7 @@ class workshepallocation_manual_privacy_provider_testcase extends \core_privacy\
     /**
      * Test that the recently selected perpage is exported.
      */
-    public function test_export_preferences() {
+    public function test_export_preferences(): void {
         global $USER;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -63,7 +64,7 @@ class workshepallocation_manual_privacy_provider_testcase extends \core_privacy\
         $prefs = writer::with_context(\context_system::instance())->get_user_preferences('workshepallocation_manual');
         $this->assertNotEmpty($prefs->workshepallocation_manual_perpage);
         $this->assertEquals(81, $prefs->workshepallocation_manual_perpage->value);
-        $this->assertContains(get_string('privacy:metadata:preference:perpage', 'workshepallocation_manual'),
+        $this->assertStringContainsString(get_string('privacy:metadata:preference:perpage', 'workshepallocation_manual'),
             $prefs->workshepallocation_manual_perpage->description);
     }
 }

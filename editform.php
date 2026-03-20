@@ -43,6 +43,10 @@ $workshep   = new workshep($workshep, $cm, $course);
 $PAGE->set_url($workshep->editform_url());
 $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
+$PAGE->activityheader->set_attrs([
+    'hidecompletion' => true,
+    'description' => ''
+]);
 $PAGE->navbar->add(get_string('editingassessmentform', 'workshep'));
 
 // load the grading strategy logic
@@ -73,7 +77,6 @@ if ($mform->is_cancelled()) {
 // Output starts here
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading(format_string($workshep->name));
 echo $OUTPUT->heading(get_string('pluginname', 'workshepform_' . $workshep->strategy), 3);
 
 $mform->display();

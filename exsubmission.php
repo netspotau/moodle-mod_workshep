@@ -38,7 +38,7 @@ $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EX
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new \moodle_exception('guestsarenotallowed');
 }
 
 $workshep = $DB->get_record('workshep', array('id' => $cm->instance), '*', MUST_EXIST);
@@ -47,6 +47,7 @@ $workshep = new workshep($workshep, $cm, $course);
 $PAGE->set_url($workshep->exsubmission_url($id), array('edit' => $edit));
 $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
+$PAGE->set_secondary_active_tab('modulepage');
 if ($edit) {
     $PAGE->navbar->add(get_string('exampleediting', 'workshep'));
 } else {
@@ -73,7 +74,7 @@ if ($example->id and ($canmanage or ($workshep->assessing_examples_allowed() and
 } elseif (is_null($example->id) and $canmanage) {
     // ok you can go
 } else {
-    print_error('nopermissions', 'error', $workshep->view_url(), 'view or manage example submission');
+    throw new \moodle_exception('nopermissions', 'error', $workshep->view_url(), 'view or manage example submission');
 }
 
 if ($id and $delete and $confirm and $canmanage) {
@@ -156,15 +157,29 @@ if ($edit and $canmanage) {
         }
 
         // Save and relink embedded images and save attachments.
-        $formdata = file_postupdate_standard_editor($formdata, 'content', $workshep->submission_content_options(),
-            $workshep->context, 'mod_workshep', 'submission_content', $example->id);
-        $formdata = file_postupdate_standard_filemanager($formdata, 'attachment', $workshep->submission_attachment_options(),
-            $workshep->context, 'mod_workshep', 'submission_attachment', $example->id);
+        // To be used when Online text is allowed as a submission type.
+        if (!empty($formdata->content_editor)) {
+            $formdata = file_postupdate_standard_editor($formdata, 'content', $workshep->submission_content_options(),
+                $workshep->context, 'mod_workshep', 'submission_content', $example->id);
+        }
+        // BASE-5215: Split saving so when the attachment is provided it is saved regardless of 'Online Text' and/or
+        // 'File attachment'.
+        if (!empty($formdata->attachment_filemanager)) {
+            $formdata = file_postupdate_standard_filemanager($formdata, 'attachment', $workshep->submission_attachment_options(),
+                $workshep->context, 'mod_workshep', 'submission_attachment', $example->id);
+        }
 
         if (empty($formdata->attachment)) {
             // explicit cast to zero integer
             $formdata->attachment = 0;
         }
+
+        // BASE-3972: If submission only allows file submission, the value for contentformat is NULL.
+        // This produces an error because contentformat has a not null constraint and expects an integer.
+        if ($formdata->contentformat === null) {
+            $formdata->contentformat = FORMAT_MOODLE;
+        }
+
         // store the updated values or re-save the new example (re-saving needed because URLs are now rewritten)
         $DB->update_record('workshep_submissions', $formdata);
         redirect($workshep->exsubmission_url($formdata->id));
@@ -173,14 +188,17 @@ if ($edit and $canmanage) {
 
 // Output starts here
 echo $output->header();
-echo $output->heading(format_string($workshep->name), 2);
+if (!$PAGE->has_secondary_navigation()) {
+    echo $output->heading(format_string($workshep->name), 2);
+}
 
 // show instructions for submitting as they may contain some list of questions and we need to know them
 // while reading the submitted answer
 if (trim($workshep->instructauthors)) {
     $instructions = file_rewrite_pluginfile_urls($workshep->instructauthors, 'pluginfile.php', $PAGE->context->id,
         'mod_workshep', 'instructauthors', null, workshep::instruction_editors_options($PAGE->context));
-    print_collapsible_region_start('', 'workshep-viewlet-instructauthors', get_string('instructauthors', 'workshep'));
+    print_collapsible_region_start('', 'workshep-viewlet-instructauthors', get_string('instructauthors', 'workshep'),
+            'workshep-viewlet-instructauthors-collapsed');
     echo $output->box(format_text($instructions, $workshep->instructauthorsformat, array('overflowdiv'=>true)), array('generalbox', 'instructions'));
     print_collapsible_region_end();
 }

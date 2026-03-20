@@ -45,20 +45,32 @@ if ($confirm) {
         throw new moodle_exception('confirmsesskeybad');
     }
     if (!$workshep->switch_phase($phase)) {
-        print_error('errorswitchingphase', 'workshep', $workshep->view_url());
+        throw new \moodle_exception('errorswitchingphase', 'workshep', $workshep->view_url());
     }
     redirect($workshep->view_url());
 }
 
 $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
+$PAGE->activityheader->set_attrs([
+    'hidecompletion' => true,
+    'description' => ''
+]);
 $PAGE->navbar->add(get_string('switchingphase', 'workshep'));
+
+$PAGE->set_secondary_active_tab("modulepage");
 
 //
 // Output starts here
 //
 echo $OUTPUT->header();
-echo $OUTPUT->heading(format_string($workshep->name));
+$continuebtn = new single_button(
+    new moodle_url($PAGE->url, array('confirm' => 1)),
+    get_string('continue'),
+    'post',
+    single_button::BUTTON_PRIMARY
+);
+$continuebtn->class .= ' me-3';
 echo $OUTPUT->confirm(get_string('switchphase' . $phase . 'info', 'workshep'),
-                        new moodle_url($PAGE->url, array('confirm' => 1)), $workshep->view_url());
+                        $continuebtn, $workshep->view_url());
 echo $OUTPUT->footer();

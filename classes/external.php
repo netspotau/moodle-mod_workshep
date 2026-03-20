@@ -26,9 +26,16 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-require_once("$CFG->libdir/externallib.php");
 require_once($CFG->dirroot . '/mod/workshep/locallib.php');
 
+use core_external\external_api;
+use core_external\external_files;
+use core_external\external_function_parameters;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
+use core_external\external_value;
+use core_external\external_warnings;
+use core_external\util as external_util;
 use mod_workshep\external\workshep_summary_exporter;
 use mod_workshep\external\submission_exporter;
 use mod_workshep\external\assessment_exporter;
@@ -1042,8 +1049,11 @@ class mod_workshep_external extends external_api {
             return null;
         }
 
-        // Remove the feedback for the reviewer if the feedback phase is not valid or if we don't have enough permissions to see it.
-        if ($workshep->phase < workshep::PHASE_EVALUATION || !($isreviewer || $canviewallassessments)) {
+        // Remove the feedback for the reviewer if:
+        // I can't see it in the evaluation phase because I'm not a teacher or the reviewer AND
+        // I can't see it in the assessment phase because I'm not a teacher.
+        if (($workshep->phase < workshep::PHASE_EVALUATION || !($isreviewer || $canviewallassessments)) &&
+                ($workshep->phase < workshep::PHASE_ASSESSMENT || !$canviewallassessments) ) {
             // Remove all the feedback information (all the optional fields).
             foreach ($properties as $attribute => $settings) {
                 if (!empty($settings['optional'])) {
@@ -1268,14 +1278,11 @@ class mod_workshep_external extends external_api {
             if (!empty($formdata[$typeofdata])) {
                 $alldata = (array) $formdata[$typeofdata];
                 foreach ($alldata as $key => $val) {
-                    if (strpos($key, 'peercomment__idx_') === 0) {
-                        // Format reviewer comment.
-                        list($val, $format) = external_format_text($val, FORMAT_MOODLE, $context->id);
-                    } else if (strpos($key, 'description__idx_')) {
+                    if (strpos($key, 'description__idx_')) {
                         // Format dimension description.
                         $id = str_replace('description__idx_', '', $key);
-                        list($val, $format) = external_format_text($val, $alldata['dimensionid__idx_' . $id . 'format'],
-                            $context->id, $strategyname, 'description', $alldata['dimensionid__idx_' . $id]);
+                        list($val, $format) = \core_external\util::format_text($val, $alldata['dimensionid__idx_' . $id . 'format'],
+                            $context, $strategyname, 'description', $alldata['dimensionid__idx_' . $id]);
                     }
                     $result[$typeofdata][] = array(
                         'name' => $key,
@@ -1501,7 +1508,7 @@ class mod_workshep_external extends external_api {
                     $data->feedbackauthor_editor['text'] = $wsdata['value'];
                     break;
                 case 'feedbackauthorformat':
-                    $data->feedbackauthor_editor['format'] = clean_param($wsdata['value'], PARAM_FORMAT);
+                    $data->feedbackauthor_editor['format'] = clean_param($wsdata['value'], PARAM_ALPHANUMEXT);
                     break;
                 case 'feedbackauthorinlineattachmentsid':
                     $data->feedbackauthor_editor['itemid'] = clean_param($wsdata['value'], PARAM_INT);

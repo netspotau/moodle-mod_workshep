@@ -46,14 +46,20 @@ $cm         = get_coursemodule_from_instance('workshep', $workshep->id, $course-
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new \moodle_exception('guestsarenotallowed');
 }
 $workshep = new workshep($workshep, $cm, $course);
 
 $PAGE->set_url($workshep->assess_url($assessment->id));
 $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
+$PAGE->activityheader->set_attrs([
+    "hidecompletion" => true,
+    "description" => ""
+]);
+
 $PAGE->navbar->add(get_string('assessingsubmission', 'workshep'));
+$PAGE->set_secondary_active_tab('modulepage');
 
 $canviewallassessments  = has_capability('mod/workshep:viewallassessments', $workshep->context);
 $canviewallsubmissions  = has_capability('mod/workshep:viewallsubmissions', $workshep->context);
@@ -85,12 +91,12 @@ if ($canviewallsubmissions) {
 if ($isreviewer or $isauthor or ($canviewallassessments and $canviewallsubmissions)) {
     // such a user can continue
 } else {
-    print_error('nopermissions', 'error', $workshep->view_url(), 'view this assessment');
+    throw new moodle_exception('nopermissions', 'error', $workshep->view_url(), 'view this assessment'); // BASE-4539.
 }
 
 if ($isauthor and !$isreviewer and !$canviewallassessments and $workshep->phase != workshep::PHASE_CLOSED) {
     // authors can see assessments of their work at the end of workshep only
-    print_error('nopermissions', 'error', $workshep->view_url(), 'view assessment of own work before workshep is closed');
+    throw new moodle_exception('nopermissions', 'error', $workshep->view_url(), 'view assessment of own work before workshep is closed'); // BASE-4539.
 }
 
 $workshep->check_view_assessment($assessment, $submission);
@@ -110,7 +116,6 @@ if ($assessmenteditable) {
     list($assessed, $notice) = $workshep->check_examples_assessed_before_assessment($assessment->reviewerid);
     if (!$assessed) {
         echo $output->header();
-        echo $output->heading(format_string($workshep->name));
         notice(get_string($notice, 'workshep'), new moodle_url('/mod/workshep/view.php', array('id' => $cm->id)));
         echo $output->footer();
         exit;
@@ -181,17 +186,17 @@ if ($canoverridegrades or $cansetassessmentweight) {
         'editable' => true,
         'editableweight' => $cansetassessmentweight,
         'overridablegradinggrade' => $canoverridegrades,
-        'showflaggingresolution' => $cansetassessmentweight and ($assessment->submitterflagged == 1));
+		'showflaggingresolution' => $cansetassessmentweight and ($assessment->submitterflagged == 1));
     $feedbackform = $workshep->get_feedbackreviewer_form($PAGE->url, $assessment, $options);
     if ($data = $feedbackform->get_data()) {
         $workshep->evaluate_assessment($assessment, $data, $cansetassessmentweight, $canoverridegrades);
+        $workshep->aggregate_grading_grades();
         redirect($workshep->view_url());
     }
 }
 
 // output starts here
 echo $output->header();
-echo $output->heading(format_string($workshep->name));
 echo $output->heading(get_string('assessedsubmission', 'workshep'), 3);
 
 $submission = $workshep->get_submission_by_id($submission->id);     // reload so can be passed to the renderer
@@ -202,7 +207,8 @@ echo $output->render($workshep->prepare_submission($submission, has_capability('
 if (trim($workshep->instructreviewers)) {
     $instructions = file_rewrite_pluginfile_urls($workshep->instructreviewers, 'pluginfile.php', $PAGE->context->id,
         'mod_workshep', 'instructreviewers', null, workshep::instruction_editors_options($PAGE->context));
-    print_collapsible_region_start('', 'workshep-viewlet-instructreviewers', get_string('instructreviewers', 'workshep'));
+    print_collapsible_region_start('', 'workshep-viewlet-instructreviewers', get_string('instructreviewers', 'workshep'),
+            'workshep-viewlet-instructreviewers-collapsed');
     echo $output->box(format_text($instructions, $workshep->instructreviewersformat, array('overflowdiv'=>true)), array('generalbox', 'instructions'));
     print_collapsible_region_end();
 }
@@ -219,7 +225,7 @@ if ($workshep->usecalibration && (($isreviewer && (($workshep->phase == workshep
     $breakdown = $calibrator->prepare_grade_breakdown($reviewer->id);
     echo $calibration_renderer->render($breakdown);
     if (!$breakdown->empty) {
-        echo $output->heading(html_writer::link($calibrator->user_calibration_url($reviewer->id), get_string('explanation','workshep', fullname($reviewer))));
+	    echo $output->heading(html_writer::link($calibrator->user_calibration_url($reviewer->id), get_string('explanation','workshep', fullname($reviewer))));
     }
     echo $output->box_end();
     print_collapsible_region_end();
@@ -248,7 +254,7 @@ if ($isreviewer) {
         'showweight'    => true,
     );
     $displayassessment = $workshep->prepare_assessment($assessment, $mform, $options);
-    
+	
     if ($isauthor and $workshep->submitterflagging) {
         if ($assessment->submitterflagged == 1) {
             //unflag
@@ -258,12 +264,13 @@ if ($isreviewer) {
             $displayassessment->add_action($workshep->flag_url($assessment->id, $PAGE->url), get_string('flagassessment', 'workshep'));
         }
     }
-    
+	
     echo $output->render($displayassessment);
 }
 
 if (!$assessmenteditable and $canoverridegrades) {
     $feedbackform->display();
 }
+echo $output->continue_button(new moodle_url($workshep->view_url())); // BASE-5468.
 
 echo $output->footer();

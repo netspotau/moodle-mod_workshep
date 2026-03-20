@@ -128,71 +128,97 @@ class workshep_scheduled_allocator implements workshep_allocator {
     /**
      * Executes the allocation
      *
+     * @param bool $checksubmissionphase Check that the workshep is in submission phase before doing anything else.
      * @return workshep_allocation_result
      */
-    public function execute() {
+    public function execute(bool $checksubmissionphase = true) {
         global $DB;
 
         $result = new workshep_allocation_result($this);
 
-        // make sure the workshep itself is at the expected state
-
-        if ($this->workshep->phase != workshep::PHASE_SUBMISSION) {
+        // Execution can occur in multiple places. Ensure we only allocate one at a time.
+        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_workshep_allocation_scheduled_execution');
+        $executionlock = $lockfactory->get_lock($this->workshep->id, 1, 30);
+        if (!$executionlock) {
             $result->set_status(workshep_allocation_result::STATUS_FAILED,
-                get_string('resultfailedphase', 'workshepallocation_scheduled'));
-            return $result;
+                get_string('resultfailed', 'workshepallocation_scheduled'));
         }
 
-        if (empty($this->workshep->submissionend)) {
+        try {
+            // Make sure the workshep itself is at the expected state.
+
+            if ($checksubmissionphase && $this->workshep->phase != workshep::PHASE_SUBMISSION) {
+                $executionlock->release();
+                $result->set_status(workshep_allocation_result::STATUS_FAILED,
+                    get_string('resultfailedphase', 'workshepallocation_scheduled'));
+                return $result;
+            }
+
+            if (empty($this->workshep->submissionend)) {
+                $executionlock->release();
+                $result->set_status(workshep_allocation_result::STATUS_FAILED,
+                    get_string('resultfaileddeadline', 'workshepallocation_scheduled'));
+                return $result;
+            }
+
+            if ($this->workshep->submissionend > time()) {
+                $executionlock->release();
+                $result->set_status(workshep_allocation_result::STATUS_VOID,
+                    get_string('resultvoiddeadline', 'workshepallocation_scheduled'));
+                return $result;
+            }
+
+            $current = $DB->get_record('workshepallocation_scheduled',
+                array('workshepid' => $this->workshep->id, 'enabled' => 1), '*', IGNORE_MISSING);
+
+            if ($current === false) {
+                $executionlock->release();
+                $result->set_status(workshep_allocation_result::STATUS_FAILED,
+                    get_string('resultfailedconfig', 'workshepallocation_scheduled'));
+                return $result;
+            }
+
+            if (!$current->enabled) {
+                $executionlock->release();
+                $result->set_status(workshep_allocation_result::STATUS_VOID,
+                    get_string('resultdisabled', 'workshepallocation_scheduled'));
+                return $result;
+            }
+
+            if (!is_null($current->timeallocated) and $current->timeallocated >= $this->workshep->submissionend) {
+                $executionlock->release();
+                $result->set_status(workshep_allocation_result::STATUS_VOID,
+                    get_string('resultvoidexecuted', 'workshepallocation_scheduled'));
+                return $result;
+            }
+
+            // So now we know that we are after the submissions deadline and either the scheduled allocation was not
+            // executed yet or it was but the submissions deadline has been prolonged (and hence we should repeat the
+            // allocations).
+
+            $settings = workshep_random_allocator_setting::instance_from_text($current->settings);
+            $randomallocator = $this->workshep->allocator_instance('random');
+            $randomallocator->execute($settings, $result);
+
+            // Store the result in the instance's table.
+            $update = new stdClass();
+            $update->id = $current->id;
+            $update->timeallocated = $result->get_timeend();
+            $update->resultstatus = $result->get_status();
+            $update->resultmessage = $result->get_message();
+            $update->resultlog = json_encode($result->get_logs());
+
+            $DB->update_record('workshepallocation_scheduled', $update);
+
+        } catch (\Exception $e) {
+            $executionlock->release();
             $result->set_status(workshep_allocation_result::STATUS_FAILED,
-                get_string('resultfaileddeadline', 'workshepallocation_scheduled'));
-            return $result;
+                get_string('resultfailed', 'workshepallocation_scheduled'));
+
+            throw $e;
         }
 
-        if ($this->workshep->submissionend > time()) {
-            $result->set_status(workshep_allocation_result::STATUS_VOID,
-                get_string('resultvoiddeadline', 'workshepallocation_scheduled'));
-            return $result;
-        }
-
-        $current = $DB->get_record('workshepallocation_scheduled',
-            array('workshepid' => $this->workshep->id, 'enabled' => 1), '*', IGNORE_MISSING);
-
-        if ($current === false) {
-            $result->set_status(workshep_allocation_result::STATUS_FAILED,
-                get_string('resultfailedconfig', 'workshepallocation_scheduled'));
-            return $result;
-        }
-
-        if (!$current->enabled) {
-            $result->set_status(workshep_allocation_result::STATUS_VOID,
-                get_string('resultdisabled', 'workshepallocation_scheduled'));
-            return $result;
-        }
-
-        if (!is_null($current->timeallocated) and $current->timeallocated >= $this->workshep->submissionend) {
-            $result->set_status(workshep_allocation_result::STATUS_VOID,
-                get_string('resultvoidexecuted', 'workshepallocation_scheduled'));
-            return $result;
-        }
-
-        // so now we know that we are after the submissions deadline and either the scheduled allocation was not
-        // executed yet or it was but the submissions deadline has been prolonged (and hence we should repeat the
-        // allocations)
-
-        $settings = workshep_random_allocator_setting::instance_from_text($current->settings);
-        $randomallocator = $this->workshep->allocator_instance('random');
-        $randomallocator->execute($settings, $result);
-
-        // store the result in the instance's table
-        $update = new stdClass();
-        $update->id = $current->id;
-        $update->timeallocated = $result->get_timeend();
-        $update->resultstatus = $result->get_status();
-        $update->resultmessage = $result->get_message();
-        $update->resultlog = json_encode($result->get_logs());
-
-        $DB->update_record('workshepallocation_scheduled', $update);
+        $executionlock->release();
 
         return $result;
     }
@@ -249,43 +275,5 @@ class workshep_scheduled_allocator implements workshep_allocator {
     
     public static function teammode_class() {
         return null;
-    }
-}
-
-/**
- * Regular jobs to execute via cron
- */
-function workshepallocation_scheduled_cron() {
-    global $CFG, $DB;
-
-    $sql = "SELECT w.*
-              FROM {workshepallocation_scheduled} a
-              JOIN {workshep} w ON a.workshepid = w.id
-             WHERE a.enabled = 1
-                   AND w.phase = 20
-                   AND w.submissionend > 0
-                   AND w.submissionend < ?
-                   AND (a.timeallocated IS NULL OR a.timeallocated < w.submissionend)";
-
-    $worksheps = $DB->get_records_sql($sql, array(time()));
-
-    if (empty($worksheps)) {
-        mtrace('... no worksheps awaiting scheduled allocation. ', '');
-        return;
-    }
-
-    mtrace('... executing scheduled allocation in '.count($worksheps).' workshep(s) ... ', '');
-
-    // let's have some fun!
-    require_once($CFG->dirroot.'/mod/workshep/locallib.php');
-
-    foreach ($worksheps as $workshep) {
-        $cm = get_coursemodule_from_instance('workshep', $workshep->id, $workshep->course, false, MUST_EXIST);
-        $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
-        $workshep = new workshep($workshep, $cm, $course);
-        $allocator = $workshep->allocator_instance('scheduled');
-        $result = $allocator->execute();
-
-        // todo inform the teachers about the results
     }
 }

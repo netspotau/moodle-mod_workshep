@@ -20,15 +20,15 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
     
     public function calculate_calibration_scores(stdClass $settings) {
         
-        global $DB;
-        
+		global $DB;
+		
         // remember the recently used settings for this workshep
         if (empty($this->settings)) {
             $this->settings = new stdclass();
             $record = new stdclass();
             $record->workshepid = $this->workshep->id;
             $record->comparison = $settings->comparison;
-            $record->consistency = $settings->consistency;
+			$record->consistency = $settings->consistency;
             $DB->insert_record('workshepcalibration_examples', $record);
         } elseif (($this->settings->comparison != $settings->comparison) || ($this->settings->consistency != $settings->consistency)) {
             $DB->set_field('workshepcalibration_examples', 'comparison', $settings->comparison,
@@ -36,7 +36,7 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
             $DB->set_field('workshepcalibration_examples', 'consistency', $settings->consistency,
                     array('workshepid' => $this->workshep->id));
         }
-        
+		
         $grader = $this->workshep->grading_strategy_instance();
         
         $this->settings->comparison = $settings->comparison;
@@ -45,8 +45,8 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         // get the information about the assessment dimensions
         $diminfo = $grader->get_dimensions_info();
 
-        // fetch the reference assessments
-        $references = $this->get_reference_assessments();
+		// fetch the reference assessments
+		$references = $this->get_reference_assessments();
 
         // fetch a recordset with all assessments to process
         $rs = $grader->get_assessments_recordset(null,true);
@@ -69,8 +69,9 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         $rs->close();
         
 
+        $calibration_scores = array(); // BASE-5468.
         foreach($example_assessments as $userid => $assessments) {
-            $score = $this->calculate_calibration_score($assessments,$references,$diminfo);
+            $score = $this->calculate_calibration_score($assessments,$references,$diminfo); // BASE-5468.
             if (!is_null($score)) {
                 $score *= 100;
              }
@@ -101,14 +102,14 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         $grader = $this->workshep->grading_strategy_instance();
         $diminfo = $grader->get_dimensions_info();
         
-        // cache the reference assessments
-        $references = $this->workshep->get_examples_for_manager();
-        $calibration_scores = array();
+		// cache the reference assessments
+		$references = $this->workshep->get_examples_for_manager();
+		$calibration_scores = array();
         
         //fetch grader recordset for examples
         $userkeys = array();
         foreach($references as $r) {
-            $userkeys[$r->reviewerid] = $r->reviewerid;
+            $userkeys[$r->reviewerid] = $r->reviewerid; // BASE-5468.
         }
 
         $exemplars = $grader->get_assessments_recordset($userkeys,true);
@@ -142,13 +143,13 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
     Plug y into the consistency curves. Multiply x by the result and you have your calibration score!
     
     */
-    
-    private function calculate_calibration_score($assessments, $references, $diminfo) {
+	
+	private function calculate_calibration_score($assessments, $references, $diminfo) {
         
         //before we even get started, make sure the user has completed enough assessments to be calibrated
-        $required_number_of_assessments = (int)$this->workshep->numexamples or count($references);
+        $required_number_of_assessments = (int)$this->workshep->numexamples or count($references); // BASE-5468.
         if ( count($assessments) < $required_number_of_assessments ) {
-            return null;
+            return null; // BASE-5468.
         }
         
         //now that we've made sure of that, we need to get our set of deviations
@@ -174,8 +175,8 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         if ($x < 0.01) $x = 0; //round 99% up to 100%
         $x = 1 - $x; //invert $x. 1 is now the best possible score.
 
-        $grading_curve = workshep_examples_calibration_method::$grading_curves[$this->settings->comparison];
-        
+        $grading_curve = workshep_examples_calibration_method::$grading_curves[$this->settings->comparison]; // BASE-5468.
+
         if ($grading_curve >= 1) {
             $x = 1 - pow(1-$x, $grading_curve);
         } else {
@@ -197,8 +198,8 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         if ($y < 0.01) $y = 0;
         if ($y > 1) $y = 1; //this *shouldn't* happen, but I'm not ruling it out
         $y = 1 - $y; //invert y. 1 is now the best possible score.
-        
-        $consistency_curve = workshep_examples_calibration_method::$grading_curves[9 - $this->settings->consistency]; //the consistency curves are actually around the other way - 0 means no consistency check while 8 is strictest. so we subtract the consistency setting from nine.
+
+        $consistency_curve = workshep_examples_calibration_method::$grading_curves[9 - $this->settings->consistency]; // BASE-5468: The consistency curves are actually around the other way - 0 means no consistency check while 8 is strictest. so we subtract the consistency setting from nine.
 
         //y = ax - a + 1
         $consistency_multiplier = $consistency_curve * $y - $consistency_curve + 1;
@@ -210,8 +211,8 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         if ($x > 1) $x = 1;
         
         return $x;
-        
-    }
+		
+	}
     
     private function normalize_grade($dim,$grade) {
         //todo: weight? is weight a factor here? probably should be...
@@ -254,15 +255,15 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         $references = $this->get_reference_assessments();
         $options = array(
             'gradedecimals' => $this->workshep->gradedecimals,
-            'accuracy' => $this->settings->comparison,
-            'consistency' => $this->settings->consistency,
+            'accuracy' => $this->settings->comparison ?? null, // BASE-4897: Fix attempt to read property on bool.
+            'consistency' => $this->settings->consistency ?? null, // BASE-4897 : Fix Attempt to read property on bool
             'finalscoreoutof' => $this->workshep->gradinggrade
         );
         
         return new workshep_examples_calibration_explanation($userid, $exxx, $references, $diminfo, $options);
     }
     
-    public function get_settings_form(moodle_url $actionurl) {
+	public function get_settings_form(moodle_url $actionurl) {
         global $CFG;    // needed because the included files use it
         global $DB;
         require_once(dirname(__FILE__) . '/settings_form.php');
@@ -273,7 +274,7 @@ class workshep_examples_calibration_method implements workshep_calibration_metho
         $attributes = array('class' => 'calibrationsettingsform calibrated');
 
         return new workshep_examples_calibration_settings_form($actionurl, $customdata, 'post', '', $attributes);
-    }
+	}
     
 }
 

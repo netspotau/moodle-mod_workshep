@@ -36,7 +36,7 @@ $cm         = get_coursemodule_from_instance('workshep', $workshep->id, $course-
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new moodle_exception('guestsarenotallowed'); // BASE-4539.
 }
 $workshep = new workshep($workshep, $cm, $course);
 
@@ -54,7 +54,7 @@ $isreviewer = ($USER->id == $reviewer->id);
 if ($isreviewer or $canmanage) {
     // such a user can continue
 } else {
-    print_error('nopermissions', 'error', $workshep->view_url(), 'assess example submission');
+    throw new moodle_exception('nopermissions', 'error', $workshep->view_url(), 'assess example submission'); // BASE-4539.
 }
 
 //todo: stop reviewer from viewing before assessment is closed

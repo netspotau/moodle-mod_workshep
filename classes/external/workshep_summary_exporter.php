@@ -26,8 +26,8 @@ defined('MOODLE_INTERNAL') || die();
 
 use core\external\exporter;
 use renderer_base;
-use external_util;
-use external_files;
+use core_external\util as external_util;
+use core_external\external_files;
 
 /**
  * Class for exporting partial workshep data (some fields are only viewable by admins).
@@ -63,6 +63,11 @@ class workshep_summary_exporter extends exporter {
                 'type' => PARAM_INT,
                 'default' => FORMAT_MOODLE,
                 'description' => 'Workshop intro text format.',
+            ),
+            'lang' => array(
+                'type' => PARAM_LANG,
+                'description' => 'Forced activity language',
+                'null' => NULL_ALLOWED,
             ),
             'instructauthors' => array(
                 'type' => PARAM_RAW,
@@ -145,10 +150,24 @@ class workshep_summary_exporter extends exporter {
                 'description' => 'Number of digits that should be shown after the decimal point when displaying grades.',
                 'optional' => true,
             ),
+            'submissiontypetext' => array (
+                'type' => PARAM_INT,
+                'default' => 1,
+                'description' => 'Indicates whether text is required as part of each submission. ' .
+                        '0 for no, 1 for optional, 2 for required.',
+                'optional' => true
+            ),
+            'submissiontypefile' => array (
+                'type' => PARAM_INT,
+                'default' => 1,
+                'description' => 'Indicates whether a file upload is required as part of each submission. ' .
+                        '0 for no, 1 for optional, 2 for required.',
+                'optional' => true
+            ),
             'nattachments' => array(
                 'type' => PARAM_INT,
-                'default' => 0,
-                'description' => 'Number of required submission attachments.',
+                'default' => 1,
+                'description' => 'Maximum number of submission attachments.',
                 'optional' => true,
             ),
             'submissionfiletypes' => array(
@@ -311,6 +330,7 @@ class workshep_summary_exporter extends exporter {
         return [
             'component' => 'mod_workshep',
             'filearea' => 'intro',
+            'options' => array('noclean' => true),
         ];
     }
 

@@ -27,10 +27,12 @@ namespace mod_workshep\privacy;
 
 use core_privacy\local\metadata\collection;
 use core_privacy\local\request\approved_contextlist;
+use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
 use core_privacy\local\request\deletion_criteria;
 use core_privacy\local\request\helper;
 use core_privacy\local\request\transform;
+use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 
 defined('MOODLE_INTERNAL') || die();
@@ -45,6 +47,7 @@ require_once($CFG->dirroot.'/mod/workshep/locallib.php');
  */
 class provider implements
         \core_privacy\local\metadata\provider,
+        \core_privacy\local\request\core_userlist_provider,
         \core_privacy\local\request\user_preference_provider,
         \core_privacy\local\request\plugin\provider {
 
@@ -54,7 +57,7 @@ class provider implements
      * @param collection $collection Collection of items to add metadata to.
      * @return collection Collection with our added items.
      */
-    public static function get_metadata(collection $collection) : collection {
+    public static function get_metadata(collection $collection): collection {
 
         $collection->add_database_table('workshep_submissions', [
             'workshepid' => 'privacy:metadata:workshepid',
@@ -104,10 +107,32 @@ class provider implements
             'timegraded' => 'privacy:metadata:timeaggregated',
         ], 'privacy:metadata:workshepaggregations');
 
+        $collection->add_database_table('workshep_calibration', [
+            'id' => 'privacy:metadata:calibration:id',
+            'userid' => 'privacy:metadata:calibration:userid',
+            'submissionid' => 'privacy:metadata:calibration:submissionid',
+            'workshepid' => 'privacy:metadata:calibration:workshepid',
+        ],'privacy:metadata:workshepcalibration');
+
+            $collection->add_database_table('workshep_user_examples', [
+                'id' => 'privacy:metadata:user_examples:id',
+                'workshepid' => 'privacy:metadata:user_examples:workshepid',
+                'userid' => 'privacy:metadata:user_examples:userid',
+                'score' => 'privacy:metadata:user_examples:score',
+            ],'privacy:metadata:workshepuserexamples');
+
         $collection->add_subsystem_link('core_files', [], 'privacy:metadata:subsystem:corefiles');
         $collection->add_subsystem_link('core_plagiarism', [], 'privacy:metadata:subsystem:coreplagiarism');
 
-        $collection->add_user_preference('workshep_perpage', 'privacy:metadata:preference:perpage');
+        $userprefs = self::get_user_prefs();
+        foreach ($userprefs as $userpref) {
+            if ($userpref === 'workshep_perpage') {
+                $collection->add_user_preference('workshep_perpage', 'privacy:metadata:preference:perpage');
+            } else {
+                $summary = str_replace('workshep-', '', $userpref);
+                $collection->add_user_preference($userpref, "privacy:metadata:preference:$summary");
+            }
+        }
 
         return $collection;
     }
@@ -126,7 +151,7 @@ class provider implements
      * @param int $userid ID of the user.
      * @return contextlist List of contexts containing the user's personal data.
      */
-    public static function get_contexts_for_userid(int $userid) : contextlist {
+    public static function get_contexts_for_userid(int $userid): contextlist {
 
         $contextlist = new contextlist();
         $sql = "SELECT ctx.id
@@ -159,6 +184,63 @@ class provider implements
         $contextlist->add_from_sql($sql, $params);
 
         return $contextlist;
+    }
+
+    /**
+     * Get the list of users within a specific context.
+     *
+     * @param userlist $userlist To be filled list of users who have data in this context/plugin combination.
+     */
+    public static function get_users_in_context(userlist $userlist) {
+        global $DB;
+
+        $context = $userlist->get_context();
+
+        if (!$context instanceof \context_module) {
+            return;
+        }
+
+        $params = [
+            'instanceid' => $context->instanceid,
+            'module' => 'workshep',
+        ];
+
+        // One query to fetch them all, one query to find them, one query to bring them all and into the userlist add them.
+        $sql = "SELECT ws.authorid, ws.gradeoverby, wa.reviewerid, wa.gradinggradeoverby, wr.userid
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON cm.module = m.id AND m.name = :module
+                  JOIN {workshep} w ON cm.instance = w.id
+                  JOIN {workshep_submissions} ws ON ws.workshepid = w.id
+             LEFT JOIN {workshep_assessments} wa ON wa.submissionid = ws.id
+             LEFT JOIN {workshep_aggregations} wr ON wr.workshepid = w.id
+                 WHERE cm.id = :instanceid";
+
+        $userids = [];
+        $rs = $DB->get_recordset_sql($sql, $params);
+
+        foreach ($rs as $r) {
+            if ($r->authorid) {
+                $userids[$r->authorid] = true;
+            }
+            if ($r->gradeoverby) {
+                $userids[$r->gradeoverby] = true;
+            }
+            if ($r->reviewerid) {
+                $userids[$r->reviewerid] = true;
+            }
+            if ($r->gradinggradeoverby) {
+                $userids[$r->gradinggradeoverby] = true;
+            }
+            if ($r->userid) {
+                $userids[$r->userid] = true;
+            }
+        }
+
+        $rs->close();
+
+        if ($userids) {
+            $userlist->add_users(array_keys($userids));
+        }
     }
 
     /**
@@ -199,12 +281,22 @@ class provider implements
      * @param int $userid ID of the user we are exporting data for
      */
     public static function export_user_preferences(int $userid) {
-
-        $perpage = get_user_preferences('workshep_perpage', null, $userid);
-
-        if ($perpage !== null) {
-            writer::export_user_preference('mod_workshep', 'workshep_perpage', $perpage,
-                get_string('privacy:metadata:preference:perpage', 'mod_workshep'));
+        $userprefs = self::get_user_prefs();
+        $expandstr = get_string('expand');
+        $collapsestr = get_string('collapse');
+        foreach ($userprefs as $userpref) {
+            $userprefval = get_user_preferences($userpref, null, $userid);
+            if ($userprefval !== null) {
+                $langid = str_replace('workshep-', '', $userpref);
+                $description = get_string("privacy:metadata:preference:$langid", 'mod_workshep');
+                if ($userpref === 'workshep_perpage') {
+                    writer::export_user_preference('mod_workshep', $userpref, $userprefval,
+                            get_string('privacy:metadata:preference:perpage', 'mod_workshep'));
+                } else {
+                    writer::export_user_preference('mod_workshep', $userpref,
+                        $userprefval == 1 ? $collapsestr : $expandstr, $description);
+                }
+            }
         }
     }
 
@@ -533,6 +625,8 @@ class provider implements
         $DB->delete_records_list('workshep_grades', 'assessmentid', array_keys($assessments));
         $DB->delete_records_list('workshep_assessments', 'id', array_keys($assessments));
         $DB->delete_records_list('workshep_submissions', 'id', array_keys($submissions));
+        $DB->delete_records_list('workshep_user_examples', 'submissionid', array_keys($submissions));
+        $DB->delete_records('workshep_calibration', ['workshepid' => $workshep->id]);
 
         $fs = get_file_storage();
         $fs->delete_area_files($context->id, 'mod_workshep', 'submission_content');
@@ -661,5 +755,147 @@ class provider implements
         foreach ($contextlist as $context) {
             \core_plagiarism\privacy\provider::delete_plagiarism_for_user($user->id, $context);
         }
+    }
+
+    /**
+     * Delete personal data for multiple users within a single workshep context.
+     *
+     * See documentation for {@link self::delete_data_for_user()} for more details on what we do and don't actually
+     * delete and why.
+     *
+     * @param approved_userlist $userlist The approved context and user information to delete information for.
+     */
+    public static function delete_data_for_users(approved_userlist $userlist) {
+        global $DB;
+
+        $context = $userlist->get_context();
+        $fs = get_file_storage();
+
+        if ($context->contextlevel != CONTEXT_MODULE) {
+            // This should not happen but let's be double sure when it comes to deleting data.
+            return;
+        }
+
+        $cm = get_coursemodule_from_id('workshep', $context->instanceid, 0, false, IGNORE_MISSING);
+
+        if (!$cm) {
+            // Probably some kind of expired context.
+            return;
+        }
+
+        $userids = $userlist->get_userids();
+
+        if (!$userids) {
+            return;
+        }
+
+        list($usersql, $userparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+
+        // Erase sensitive data in all submissions by all the users in the given context.
+
+        $sql = "SELECT ws.id AS submissionid
+                  FROM {workshep} w
+                  JOIN {workshep_submissions} ws ON ws.workshepid = w.id
+                 WHERE w.id = :workshepid AND ws.authorid $usersql";
+
+        $params = $userparams + [
+            'workshepid' => $cm->instance,
+        ];
+
+        $submissionids = $DB->get_fieldset_sql($sql, $params);
+
+        if ($submissionids) {
+            list($submissionidsql, $submissionidparams) = $DB->get_in_or_equal($submissionids, SQL_PARAMS_NAMED);
+
+            $DB->set_field_select('workshep_submissions', 'title', get_string('privacy:request:delete:title',
+                'mod_workshep'), "id $submissionidsql", $submissionidparams);
+            $DB->set_field_select('workshep_submissions', 'content', get_string('privacy:request:delete:content',
+                'mod_workshep'), "id $submissionidsql", $submissionidparams);
+            $DB->set_field_select('workshep_submissions', 'feedbackauthor', get_string('privacy:request:delete:content',
+                'mod_workshep'), "id $submissionidsql", $submissionidparams);
+
+            $fs->delete_area_files_select($context->id, 'mod_workshep', 'submission_content',
+                $submissionidsql, $submissionidparams);
+            $fs->delete_area_files_select($context->id, 'mod_workshep', 'submission_attachment',
+                $submissionidsql, $submissionidparams);
+        }
+
+        // Erase personal data in received assessments - feedback is seen as belonging to the recipient.
+
+        $sql = "SELECT wa.id AS assessmentid
+                  FROM {workshep} w
+                  JOIN {workshep_submissions} ws ON ws.workshepid = w.id
+                  JOIN {workshep_assessments} wa ON wa.submissionid = ws.id
+                 WHERE w.id = :workshepid AND ws.authorid $usersql";
+
+        $params = $userparams + [
+            'workshepid' => $cm->instance,
+        ];
+
+        $assessmentids = $DB->get_fieldset_sql($sql, $params);
+
+        if ($assessmentids) {
+            list($assessmentidsql, $assessmentidparams) = $DB->get_in_or_equal($assessmentids, SQL_PARAMS_NAMED);
+
+            $DB->set_field_select('workshep_assessments', 'feedbackauthor', get_string('privacy:request:delete:content',
+                'mod_workshep'), "id $assessmentidsql", $assessmentidparams);
+
+            $fs->delete_area_files_select($context->id, 'mod_workshep', 'overallfeedback_content',
+                $assessmentidsql, $assessmentidparams);
+            $fs->delete_area_files_select($context->id, 'mod_workshep', 'overallfeedback_attachment',
+                $assessmentidsql, $assessmentidparams);
+        }
+
+        // Erase sensitive data in provided assessments records.
+
+        $sql = "SELECT wa.id AS assessmentid
+                  FROM {workshep} w
+                  JOIN {workshep_submissions} ws ON ws.workshepid = w.id
+                  JOIN {workshep_assessments} wa ON wa.submissionid = ws.id
+                 WHERE w.id = :workshepid AND wa.reviewerid $usersql";
+
+        $params = $userparams + [
+            'workshepid' => $cm->instance,
+        ];
+
+        $assessmentids = $DB->get_fieldset_sql($sql, $params);
+
+        if ($assessmentids) {
+            list($assessmentidsql, $assessmentidparams) = $DB->get_in_or_equal($assessmentids, SQL_PARAMS_NAMED);
+
+            $DB->set_field_select('workshep_assessments', 'feedbackreviewer', get_string('privacy:request:delete:content',
+                'mod_workshep'), "id $assessmentidsql", $assessmentidparams);
+        }
+
+        foreach ($userids as $userid) {
+            \core_plagiarism\privacy\provider::delete_plagiarism_for_user($userid, $context);
+        }
+    }
+
+    /**
+     * Get the user preferences.
+     *
+     * @return array List of user preferences
+     */
+    protected static function get_user_prefs(): array {
+        return [
+            'workshep_perpage',
+            'workshep-viewlet-allexamples-collapsed',
+            'workshep-viewlet-allsubmissions-collapsed',
+            'workshep-viewlet-assessmentform-collapsed',
+            'workshep-viewlet-assignedassessments-collapsed',
+            'workshep-viewlet-cleargrades-collapsed',
+            'workshep-viewlet-conclusion-collapsed',
+            'workshep-viewlet-examples-collapsed',
+            'workshep-viewlet-examplesfail-collapsed',
+            'workshep-viewlet-gradereport-collapsed',
+            'workshep-viewlet-instructauthors-collapsed',
+            'workshep-viewlet-instructreviewers-collapsed',
+            'workshep-viewlet-intro-collapsed',
+            'workshep-viewlet-overallfeedback-collapsed',
+            'workshep-viewlet-ownsubmission-collapsed',
+            'workshep-viewlet-publicsubmissions-collapsed',
+            'workshep-viewlet-yourgrades-collapsed'
+        ];
     }
 }

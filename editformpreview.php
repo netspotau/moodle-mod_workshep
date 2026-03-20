@@ -33,7 +33,7 @@ $workshep = $DB->get_record('workshep', array('id' => $cm->instance), '*', MUST_
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new \moodle_exception('guestsarenotallowed');
 }
 $workshep = new workshep($workshep, $cm, $course);
 
@@ -43,6 +43,11 @@ $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
 $PAGE->navbar->add(get_string('editingassessmentform', 'workshep'), $workshep->editform_url(), navigation_node::TYPE_CUSTOM);
 $PAGE->navbar->add(get_string('previewassessmentform', 'workshep'));
+$PAGE->set_secondary_active_tab('workshepassessement');
+$PAGE->activityheader->set_attrs([
+    "hidecompletion" => true,
+    "description" => ''
+]);
 $currenttab = 'editform';
 
 // load the grading strategy logic
@@ -53,7 +58,6 @@ $mform = $strategy->get_assessment_form($workshep->editform_url(), 'preview');
 
 // output starts here
 echo $OUTPUT->header();
-echo $OUTPUT->heading(format_string($workshep->name));
 echo $OUTPUT->heading(get_string('assessmentform', 'workshep'), 3);
 $mform->display();
 echo $OUTPUT->footer();

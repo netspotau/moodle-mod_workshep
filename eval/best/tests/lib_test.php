@@ -18,10 +18,14 @@
  * Unit tests for grading evaluation method "best"
  *
  * @package    workshepeval_best
- * @category   phpunit
+ * @category   test
  * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace workshepeval_best;
+
+use workshep;
+use workshep_best_evaluation;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -32,7 +36,10 @@ require_once($CFG->dirroot . '/mod/workshep/eval/best/lib.php');
 require_once($CFG->libdir . '/gradelib.php');
 
 
-class workshepeval_best_evaluation_testcase extends basic_testcase {
+/**
+ * Unit tests for grading evaluation lib.php
+ */
+final class lib_test extends \advanced_testcase {
 
     /** workshep instance emulation */
     protected $workshep;
@@ -43,24 +50,24 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
     /**
      * Setup testing environment
      */
-    protected function setUp() {
+    protected function setUp(): void {
         parent::setUp();
 
-        $cm             = new stdclass();
-        $course         = new stdclass();
-        $context        = new stdclass();
+        $cm             = new \stdClass(); // BASE-4539.
+        $course         = new \stdClass(); // BASE-4539.
+        $context        = new \stdClass(); // BASE-4539.
         $workshep       = (object)array('id' => 42, 'evaluation' => 'best');
         $this->workshep = new workshep($workshep, $cm, $course, $context);
         $this->evaluator = new testable_workshep_best_evaluation($this->workshep);
     }
 
-    protected function tearDown() {
+    protected function tearDown(): void {
         $this->workshep = null;
         $this->evaluator = null;
         parent::tearDown();
     }
 
-    public function test_normalize_grades() {
+    public function test_normalize_grades(): void {
         // fixture set-up
         $assessments = array();
         $assessments[1] = (object)array(
@@ -90,7 +97,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertEquals($norm[7]->dimgrades[4], 0);
     }
 
-    public function test_normalize_grades_max_equals_min() {
+    public function test_normalize_grades_max_equals_min(): void {
         // fixture set-up
         $assessments = array();
         $assessments[1] = (object)array(
@@ -106,7 +113,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertEquals($norm[1]->dimgrades[3], 100);
     }
 
-    public function test_average_assessment_same_weights() {
+    public function test_average_assessment_same_weights(): void {
         // fixture set-up
         $assessments = array();
         $assessments[18] = (object)array(
@@ -125,7 +132,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertEquals(grade_floatval($average->dimgrades[2]), grade_floatval(50));
     }
 
-    public function test_average_assessment_different_weights() {
+    public function test_average_assessment_different_weights(): void {
         // fixture set-up
         $assessments = array();
         $assessments[11] = (object)array(
@@ -149,7 +156,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertEquals(grade_floatval($average->dimgrades[5]), grade_floatval((95.0 + 92.0*3 + 88.0)/5));
     }
 
-    public function test_average_assessment_noweight() {
+    public function test_average_assessment_noweight(): void {
         // fixture set-up
         $assessments = array();
         $assessments[11] = (object)array(
@@ -166,7 +173,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertNull($average);
     }
 
-    public function test_weighted_variance() {
+    public function test_weighted_variance(): void {
         // fixture set-up
         $assessments[11] = (object)array(
             'weight'        => 1,
@@ -197,7 +204,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertEquals($variance[4], 4);
     }
 
-    public function test_assessments_distance_zero() {
+    public function test_assessments_distance_zero(): void {
         // fixture set-up
         $diminfo = array(
             3 => (object)array('weight' => 1, 'min' => 0, 'max' => 100, 'variance' => 12.34567),
@@ -210,7 +217,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
         $this->assertEquals($this->evaluator->assessments_distance($assessment1, $assessment2, $diminfo, $settings), 0);
     }
 
-    public function test_assessments_distance_equals() {
+    public function test_assessments_distance_equals(): void {
         /*
         // fixture set-up
         $diminfo = array(
@@ -240,7 +247,7 @@ class workshepeval_best_evaluation_testcase extends basic_testcase {
 
     }
 
-    public function test_assessments_distance_zero_variance() {
+    public function test_assessments_distance_zero_variance(): void {
         // Fixture set-up: an assessment form of the strategy "Number of errors",
         // three assertions, same weight.
         $diminfo = array(
@@ -333,7 +340,7 @@ class testable_workshep_best_evaluation extends workshep_best_evaluation {
     public function weighted_variance(array $assessments) {
         return parent::weighted_variance($assessments);
     }
-    public function assessments_distance(stdclass $assessment, stdclass $referential, array $diminfo, stdclass $settings) {
+    public function assessments_distance(\stdClass $assessment, \stdClass $referential, array $diminfo, \stdClass $settings) {
         return parent::assessments_distance($assessment, $referential, $diminfo, $settings);
     }
 }

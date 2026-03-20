@@ -27,10 +27,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component  = 'workshepallocation_scheduled';
-$plugin->version    = 2018051400;
-$plugin->requires   = 2018050800;
-$plugin->dependencies = array(
-    'workshepallocation_random'  => 2018050800,
-);
+$plugin->version    = 2024100700;
+$plugin->requires   = 2024100100;
+$plugin->dependencies = [
+    'workshepallocation_random'  => 2024100100,
+];
 $plugin->maturity   = MATURITY_STABLE;
-$plugin->cron       = 60;

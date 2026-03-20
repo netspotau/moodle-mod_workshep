@@ -63,16 +63,6 @@ class phase_switched extends \core\event\base {
     }
 
     /**
-     * Return the legacy event log data.
-     *
-     * @return array|null
-     */
-    protected function get_legacy_logdata() {
-        return array($this->courseid, 'workshep', 'update switch phase', 'view.php?id=' . $this->contextinstanceid,
-                $this->other['workshepphase'], $this->contextinstanceid);
-    }
-
-    /**
      * Return localised event name.
      *
      * @return string

@@ -33,7 +33,7 @@ class workshep_submission_form extends moodleform {
         $mform = $this->_form;
 
         $current        = $this->_customdata['current'];
-        $sid            = isset($this->_customdata['sid']) ? $this->_customdata['sid'] : false;
+        $sid            = isset($this->_customdata['sid']) ? $this->_customdata['sid'] : false; // BASE-5468.
         $workshep       = $this->_customdata['workshep'];
         $contentopts    = $this->_customdata['contentopts'];
         $attachmentopts = $this->_customdata['attachmentopts'];
@@ -45,13 +45,21 @@ class workshep_submission_form extends moodleform {
         $mform->addRule('title', null, 'required', null, 'client');
         $mform->addRule('title', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
 
-        $mform->addElement('editor', 'content_editor', get_string('submissioncontent', 'workshep'), null, $contentopts);
-        $mform->setType('content', PARAM_RAW);
+        if ($workshep->submissiontypetext != WORKSHEP_SUBMISSION_TYPE_DISABLED) {
+            $mform->addElement('editor', 'content_editor', get_string('submissioncontent', 'workshep'), null, $contentopts);
+            $mform->setType('content_editor', PARAM_RAW);
+            if ($workshep->submissiontypetext == WORKSHEP_SUBMISSION_TYPE_REQUIRED) {
+                $mform->addRule('content_editor', null, 'required', null, 'client');
+            }
+        }
 
-        if ($workshep->nattachments > 0) {
+        if ($workshep->submissiontypefile != WORKSHEP_SUBMISSION_TYPE_DISABLED) {
             $mform->addElement('static', 'filemanagerinfo', get_string('nattachments', 'workshep'), $workshep->nattachments);
             $mform->addElement('filemanager', 'attachment_filemanager', get_string('submissionattachment', 'workshep'),
                                 null, $attachmentopts);
+            if ($workshep->submissiontypefile == WORKSHEP_SUBMISSION_TYPE_REQUIRED) {
+                $mform->addRule('attachment_filemanager', null, 'required', null, 'client');
+            }
         }
 
         $mform->addElement('hidden', 'id', $current->id);
@@ -66,7 +74,7 @@ class workshep_submission_form extends moodleform {
         $mform->addElement('hidden', 'example', 0);
         $mform->setType('example', PARAM_INT);
 
-        // Will be non-zero if we're trying to submit on behalf of this author
+        // BASE-5468: Will be non-zero if we're trying to submit on behalf of this author.
         if ($sid) {
             $mform->addElement('hidden', 'sid', $current->authorid);
             $mform->setType('sid', PARAM_INT);

@@ -31,5 +31,10 @@ $observers = array(
     array(
         'eventname' => '\mod_workshep\event\course_module_viewed',
         'callback'  => '\workshepallocation_scheduled\observer::workshep_viewed',
+    ),
+
+    array(
+        'eventname' => '\mod_workshep\event\phase_automatically_switched',
+        'callback' => '\workshepallocation_scheduled\observer::phase_automatically_switched'
     )
 );

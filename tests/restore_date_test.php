@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Restore date tests.
- *
- * @package    mod_workshep
- * @copyright  2017 onwards Ankit Agarwal <ankit.agrr@gmail.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace mod_workshep\backup;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -37,7 +31,7 @@ require_once($CFG->dirroot . "/mod/workshep/tests/fixtures/testable.php");
  * @copyright  2017 onwards Ankit Agarwal <ankit.agrr@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class mod_workshep_restore_date_testcase extends restore_date_testcase {
+class restore_date_test extends \restore_date_testcase {
 
     /**
      * Test restore dates.

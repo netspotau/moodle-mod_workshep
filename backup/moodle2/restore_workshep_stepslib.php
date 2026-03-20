@@ -93,6 +93,11 @@ class restore_workshep_activity_structure_step extends restore_activity_structur
         // aggregations of grading grades in this workshep
         $paths[] = new restore_path_element('workshep_aggregation', '/activity/workshep/aggregations/aggregation');
 
+        // assigned example submissions
+        $userexample = new restore_path_element('workshep_userexample',
+                            '/activity/workshep/examplesubmissions/examplesubmission/userexamples/userexample');
+        $paths[] = $userexample;
+
         // Return the paths wrapped into standard activity structure
         return $this->prepare_activity_structure($paths);
     }
@@ -104,12 +109,22 @@ class restore_workshep_activity_structure_step extends restore_activity_structur
         $oldid = $data->id;
         $data->course = $this->get_courseid();
 
+        $data->strategy = clean_param($data->strategy, PARAM_PLUGIN);
+        $data->evaluation = clean_param($data->evaluation, PARAM_PLUGIN);
+
         // Any changes to the list of dates that needs to be rolled should be same during course restore and course reset.
         // See MDL-9367.
         $data->submissionstart = $this->apply_date_offset($data->submissionstart);
         $data->submissionend = $this->apply_date_offset($data->submissionend);
         $data->assessmentstart = $this->apply_date_offset($data->assessmentstart);
         $data->assessmentend = $this->apply_date_offset($data->assessmentend);
+
+        if ($data->nattachments == 0) {
+            // Convert to the new method for disabling file submissions.
+            $data->submissiontypefile = WORKSHEP_SUBMISSION_TYPE_DISABLED;
+            $data->submissiontypetext = WORKSHEP_SUBMISSION_TYPE_REQUIRED;
+            $data->nattachments = 1;
+        }
 
         // insert the workshep record
         $newitemid = $DB->insert_record('workshep', $data);
@@ -142,6 +157,19 @@ class restore_workshep_activity_structure_step extends restore_activity_structur
 
         $newitemid = $DB->insert_record('workshep_assessments', $data);
         $this->set_mapping('workshep_referenceassessment', $oldid, $newitemid, true); // Mapping with files
+    }
+
+    protected function process_workshep_userexample($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $this->log('Processing user example', backup::LOG_DEBUG, $data->userid);
+
+        $data->workshepid = $this->get_new_parentid('workshep');
+        $data->submissionid = $this->get_new_parentid('workshep_examplesubmission');
+        $data->userid = $this->get_mappingid('user', $data->userid);
+
+        $DB->insert_record('workshep_user_examples', $data);
     }
 
     protected function process_workshep_exampleassessment($data) {

@@ -59,7 +59,7 @@ class evaluation_context extends \local_teameval\evaluation_context {
 
     public function marking_users() {
         $grouped = $this->workshep->get_potential_authors(false);
-        $users = array_reduce($grouped, function($carry = [], $new) {
+        $users = array_reduce($grouped, function($carry, $new) {
             return $carry + $new;
         }, []);
         return $users;
@@ -70,12 +70,13 @@ class evaluation_context extends \local_teameval\evaluation_context {
         $sql = <<<SQL
 SELECT s.grade
     FROM {workshep_submissions} s
+        JOIN {user} u ON (s.authorid = u.id)
         LEFT JOIN {groups_members} m ON s.authorid = m.userid
     WHERE s.workshepid = :workshepid
         AND m.groupid = :groupid
     ORDER BY s.timemodified DESC
     LIMIT 1;
-SQL;
+SQL; // BASE-4936.
         return $DB->get_field_sql($sql, ['workshepid' => $this->workshep->id, 'groupid' => $groupid]);
     }
 

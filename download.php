@@ -25,7 +25,7 @@ $workshep   = $DB->get_record('workshep', array('id' => $cm->instance), '*', MUS
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new moodle_exception('guestsarenotallowed'); // BASE-4539.
 }
 
 require_capability('mod/workshep:viewallassessments', $PAGE->context);
@@ -38,9 +38,9 @@ $groupid = groups_get_activity_group($cm, true);
 
 $teammode = $workshep->teammode;
 if ($teammode) {
-    $data = $workshep->prepare_grading_report_data_grouped($USER->id, $groupid, 0, PHP_INT_MAX, $sortby, $sorthow);
+	$data = $workshep->prepare_grading_report_data_grouped($USER->id, $groupid, 0, PHP_INT_MAX, $sortby, $sorthow);
 } else {
-    $data = $workshep->prepare_grading_report_data($USER->id, $groupid, 0, PHP_INT_MAX, $sortby, $sorthow);
+ 	$data = $workshep->prepare_grading_report_data($USER->id, $groupid, 0, PHP_INT_MAX, $sortby, $sorthow);
 }
 
 // Our grading report is a good start, but unfortunately it's not quite enough.
@@ -50,6 +50,10 @@ if ($teammode) {
 $userids = array();
 foreach($data->userinfo as $k => $v) {
     if (is_int($k)) $userids[] = $k;
+}
+
+if (empty($userids)) {
+    throw new moodle_exception('nouserstodownloadgrades'); // BASE-5357.
 }
 
 list($select, $params) = $DB->get_in_or_equal($userids);

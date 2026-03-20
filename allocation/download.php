@@ -18,7 +18,7 @@ $workshep   = $DB->get_record('workshep', array('id' => $cm->instance), '*', MUS
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new moodle_exception('guestsarenotallowed'); // BASE-4539.
 }
 
 require_capability('mod/workshep:viewallassessments', $PAGE->context);

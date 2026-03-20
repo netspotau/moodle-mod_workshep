@@ -63,34 +63,34 @@ class behat_workshepallocation_manual extends behat_base {
             $selectnode = $this->find('xpath', $xpathselect);
         }
 
-        $selectformfield = behat_field_manager::get_form_field($selectnode, $this->getSession());
-        $selectformfield->set_value($reviewername);
+        $this->execute('behat_forms::set_field_node_value', [
+            $selectnode,
+            $reviewername,
+        ]);
 
         if (!$this->running_javascript()) {
             // Without Javascript we need to press the "Go" button.
             $go = behat_context_helper::escape(get_string('go'));
             $this->find('xpath', $xpathtd."/descendant::input[@value=$go]")->click();
-        } else {
-            // With Javascript we just wait for the page to reload.
-            $this->getSession()->wait(self::EXTENDED_TIMEOUT, self::PAGE_READY_JS);
         }
+
         // Check the success string to appear.
-        $allocatedtext = behat_context_helper::escape(
-            get_string('allocationadded', 'workshepallocation_manual'));
+        $allocatedtext = behat_context_helper::escape(get_string('allocationadded', 'workshepallocation_manual'));
         $this->find('xpath', "//*[contains(.,$allocatedtext)]");
     }
 
     /**
      * Manually allocates multiple reviewers in workshep.
      *
+     * @When /^I allocate submissions in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:$/
      * @When /^I allocate submissions in workshep "(?P<workshep_name_string>(?:[^"]|\\")*)" as:"$/
      * @param string $workshepname
      * @param TableNode $table should have one column with title 'Reviewer' and another with title 'Participant' (or 'Reviewee')
      */
     public function i_allocate_submissions_in_workshep_as($workshepname, TableNode $table) {
-
-        $this->find_link($workshepname)->click();
-        $this->execute('behat_navigation::i_navigate_to_in_current_page_administration', get_string('allocate', 'workshep'));
+        $this->execute("behat_navigation::go_to_breadcrumb_location", $workshepname);
+        $this->execute('behat_navigation::i_navigate_to_in_current_page_administration',
+            get_string('submissionsallocation', 'workshep'));
         $rows = $table->getRows();
         $reviewer = $participant = null;
         for ($i = 0; $i < count($rows[0]); $i++) {
@@ -108,8 +108,15 @@ class behat_workshepallocation_manual extends behat_base {
         if ($participant === null) {
             throw new ElementTextException('Neither "Participant" nor "Reviewee" column could be located', $this->getSession());
         }
+
         for ($i = 1; $i < count($rows); $i++) {
-            $this->i_add_a_reviewer_for_workshep_participant($rows[$i][$reviewer], $rows[$i][$participant]);
+            $this->execute(
+                'behat_workshepallocation_manual::i_add_a_reviewer_for_workshep_participant',
+                [
+                    $rows[$i][$reviewer],
+                    $rows[$i][$participant],
+                ]
+            );
         }
     }
 }

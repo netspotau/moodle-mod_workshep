@@ -15,19 +15,21 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Provides the {@link workshepform_numerrors_privacy_provider_testcase} class.
+ * Provides the {@see workshepform_comments\privacy\provider_test} class.
  *
- * @package     workshepform_numerrors
+ * @package     workshepform_comments
  * @category    test
  * @copyright   2018 David Mudrák <david@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace workshepform_comments\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
 use core_privacy\local\request\writer;
+use core_privacy\tests\provider_testcase;
 
 /**
  * Unit tests for the privacy API implementation.
@@ -35,12 +37,42 @@ use core_privacy\local\request\writer;
  * @copyright 2018 David Mudrák <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class workshepform_numerrors_privacy_provider_testcase extends advanced_testcase {
+final class provider_test extends provider_testcase {
+
+    /** @var \testing_data_generator data generator. */
+    protected $generator;
+
+    /** @var \mod_workshep_generator workshep generator. */
+    protected $workshepgenerator;
+
+    /** @var \stdClass course data. */
+    protected $course1;
+
+    /** @var \stdClass student data. */
+    protected $student1;
+
+    /** @var \stdClass student data. */
+    protected $student2;
+
+    /** @var \stdClass first workshep in course1 */
+    protected $workshep11;
+
+    /** @var int ID of the submission in workshep11 by student1 */
+    protected $submission111;
+
+    /** @var int ID of the assessment of submission111 by student2 */
+    protected $assessment1112;
+
+    /** @var bool|int true or new id */
+    protected $dim1;
+
+    /** @var bool|int true or new id */
+    protected $dim2;
 
     /**
-     * Test {@link workshepform_numerrors\privacy\provider::export_assessment_form()} implementation.
+     * Test {@link workshepform_comments\privacy\provider::export_assessment_form()} implementation.
      */
-    public function test_export_assessment_form() {
+    public function test_export_assessment_form(): void {
         global $DB;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -54,28 +86,20 @@ class workshepform_numerrors_privacy_provider_testcase extends advanced_testcase
             'course' => $this->course1,
             'name' => 'Workshop11',
         ]);
-        $DB->set_field('workshep', 'phase', 50, ['id' => $this->workshep11->id]);
+        $DB->set_field('workshep', 'phase', 100, ['id' => $this->workshep11->id]);
 
-        $this->dim1 = $DB->insert_record('workshepform_numerrors', [
+        $this->dim1 = $DB->insert_record('workshepform_comments', [
             'workshepid' => $this->workshep11->id,
             'sort' => 1,
-            'description' => 'Assertion 1 description',
+            'description' => 'Aspect 1 description',
             'descriptionformat' => FORMAT_MARKDOWN,
-            'descriptiontrust' => 0,
-            'grade0' => 'No',
-            'grade1' => 'Yes',
-            'weight' => 1,
         ]);
 
-        $this->dim2 = $DB->insert_record('workshepform_numerrors', [
+        $this->dim2 = $DB->insert_record('workshepform_comments', [
             'workshepid' => $this->workshep11->id,
             'sort' => 2,
-            'description' => 'Assertion 2 description',
+            'description' => 'Aspect 2 description',
             'descriptionformat' => FORMAT_MARKDOWN,
-            'descriptiontrust' => 0,
-            'grade0' => 'Missing',
-            'grade1' => 'Present',
-            'weight' => 1,
         ]);
 
         $this->student1 = $this->generator->create_user();
@@ -89,19 +113,19 @@ class workshepform_numerrors_privacy_provider_testcase extends advanced_testcase
 
         $DB->insert_record('workshep_grades', [
             'assessmentid' => $this->assessment1112,
-            'strategy' => 'numerrors',
+            'strategy' => 'comments',
             'dimensionid' => $this->dim1,
-            'grade' => 1,
-            'peercomment' => 'Awesome',
+            'grade' => 100,
+            'peercomment' => 'Not awesome',
             'peercommentformat' => FORMAT_PLAIN,
         ]);
 
         $DB->insert_record('workshep_grades', [
             'assessmentid' => $this->assessment1112,
-            'strategy' => 'numerrors',
+            'strategy' => 'comments',
             'dimensionid' => $this->dim2,
-            'grade' => 0,
-            'peercomment' => 'Missing',
+            'grade' => 100,
+            'peercomment' => 'All good',
             'peercommentformat' => FORMAT_PLAIN,
         ]);
 
@@ -117,11 +141,10 @@ class workshepform_numerrors_privacy_provider_testcase extends advanced_testcase
             get_string('myassessments', 'mod_workshep'),
             $this->assessment1112,
             get_string('assessmentform', 'mod_workshep'),
-            get_string('pluginname', 'workshepform_numerrors'),
+            get_string('pluginname', 'workshepform_comments'),
         ]);
 
-        $this->assertEquals('Assertion 1 description', $form->assertions[0]->description);
-        $this->assertEquals(0, $form->assertions[1]->grade);
-        $this->assertEquals('Missing', $form->assertions[1]->peercomment);
+        $this->assertEquals('Aspect 1 description', $form->aspects[0]->description);
+        $this->assertEquals('All good', $form->aspects[1]->peercomment);
     }
 }

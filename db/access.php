@@ -210,7 +210,7 @@ $capabilities = array(
         )
     ),
 
-    // Limit submit on behalf of others
+    // BASE-5468: Limit submit on behalf of others.
     'mod/workshep:submitonbehalfofothers' => array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,

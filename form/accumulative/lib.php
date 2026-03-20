@@ -81,10 +81,10 @@ function workshepform_accumulative_pluginfile($course, $cm, $context, $filearea,
  */
 class workshep_accumulative_strategy implements workshep_strategy {
 
-    /** @const default number of dimensions to show */
+    /** @var default number of dimensions to show */
     const MINDIMS = 3;
 
-    /** @const number of dimensions to add */
+    /** @var number of dimensions to add */
     const ADDDIMS = 2;
 
     /** @var workshep the parent workshep instance */
@@ -95,6 +95,9 @@ class workshep_accumulative_strategy implements workshep_strategy {
 
     /** @var array options for dimension description fields */
     protected $descriptionopts;
+
+    /** @var object BASE-5117: accumulative configuration */
+    protected $config;
 
     /**
      * Constructor
@@ -217,7 +220,7 @@ class workshep_accumulative_strategy implements workshep_strategy {
      * @param bool $editable
      * @param array $options
      */
-    public function get_assessment_form(moodle_url $actionurl=null, $mode='preview', stdclass $assessment=null, $editable=true, $options=array()) {
+    public function get_assessment_form(?moodle_url $actionurl=null, $mode='preview', ?stdclass $assessment=null, $editable=true, $options=array()) {
         global $CFG;    // needed because the included files use it
         global $PAGE;
         global $DB;
@@ -282,7 +285,9 @@ class workshep_accumulative_strategy implements workshep_strategy {
             $grade->assessmentid = $assessment->id;
             $grade->strategy = 'accumulative';
             $grade->dimensionid = $data->{'dimensionid__idx_' . $i};
-            $grade->grade = $data->{'grade__idx_' . $i};
+            if (isset($data->{'grade__idx_' . $i})) {
+                $grade->grade = $data->{'grade__idx_' . $i};
+            }
             $grade->peercomment = $data->{'peercomment__idx_' . $i};
             $grade->peercommentformat = FORMAT_MOODLE;
             if (empty($grade->id)) {
@@ -327,7 +332,7 @@ class workshep_accumulative_strategy implements workshep_strategy {
             $sql .= " AND s.example=0";
         }
         
-        if (is_null($restrict)) {
+        if (empty($restrict)) { // BASE-4897: Fix the Fatal error when $restrict is empty.
             // update all users - no more conditions
         } elseif (!empty($restrict)) {
             list($usql, $uparams) = $DB->get_in_or_equal($restrict, SQL_PARAMS_NAMED);

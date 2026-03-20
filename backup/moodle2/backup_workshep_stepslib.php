@@ -53,14 +53,14 @@ class backup_workshep_activity_structure_step extends backup_activity_structure_
             'instructauthorsformat', 'instructreviewers',
             'instructreviewersformat', 'timemodified', 'phase', 'useexamples',
             'usepeerassessment', 'useselfassessment', 'grade', 'gradinggrade',
-            'strategy', 'evaluation', 'gradedecimals', 'nattachments', 'submissionfiletypes',
-            'latesubmissions', 'maxbytes', 'examplesmode', 'submissionstart',
+            'strategy', 'evaluation', 'gradedecimals', 'submissiontypetext', 'submissiontypefile', 'nattachments',
+            'submissionfiletypes', 'latesubmissions', 'maxbytes', 'examplesmode', 'submissionstart',
             'submissionend', 'assessmentstart', 'assessmentend',
             'conclusion', 'conclusionformat', 'overallfeedbackmode',
             'overallfeedbackfiles', 'overallfeedbackmaxbytes', 'teammode',
-            'examplescompare', 'examplesreassess', 'numexamples',
-            'calibrationphase', 'usecalibration', 'autorecalculate', 'calibrationmethod',
-            ));
+			'examplescompare', 'examplesreassess', 'numexamples',
+			'calibrationphase', 'usecalibration', 'autorecalculate', 'calibrationmethod', // BASE-5468.
+			));
 
         // assessment forms definition
         $this->add_subplugin_structure('workshepform', $workshep, true);
@@ -121,6 +121,10 @@ class backup_workshep_activity_structure_step extends backup_activity_structure_
         $aggregation = new backup_nested_element('aggregation', array('id'), array(
             'userid', 'gradinggrade', 'timegraded'));
 
+        // assigned example submissions
+        $userexamples = new backup_nested_element('userexamples');
+        $userexample = new backup_nested_element('userexample', null, array('userid'));
+
         ////////////////////////////////////////////////////////////////////////
         // build the tree in the order needed for restore
         ////////////////////////////////////////////////////////////////////////
@@ -140,6 +144,9 @@ class backup_workshep_activity_structure_step extends backup_activity_structure_
 
         $workshep->add_child($aggregations);
         $aggregations->add_child($aggregation);
+
+        $examplesubmission->add_child($userexamples);
+        $userexamples->add_child($userexample);
 
         ////////////////////////////////////////////////////////////////////////
         // data sources - non-user data
@@ -180,6 +187,8 @@ class backup_workshep_activity_structure_step extends backup_activity_structure_
             $assessment->set_source_table('workshep_assessments', array('submissionid' => backup::VAR_PARENTID));
 
             $aggregation->set_source_table('workshep_aggregations', array('workshepid' => backup::VAR_PARENTID));
+
+            $userexample->set_source_table('workshep_user_examples', array('submissionid' => backup::VAR_PARENTID));
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -192,6 +201,7 @@ class backup_workshep_activity_structure_step extends backup_activity_structure_
         $assessment->annotate_ids('user', 'reviewerid');
         $assessment->annotate_ids('user', 'gradinggradeoverby');
         $aggregation->annotate_ids('user', 'userid');
+        $userexample->annotate_ids('user', 'userid');
 
         ////////////////////////////////////////////////////////////////////////
         // file annotations

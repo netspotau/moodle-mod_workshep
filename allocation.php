@@ -38,7 +38,8 @@ $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EX
 $workshep   = $DB->get_record('workshep', array('id' => $cm->instance), '*', MUST_EXIST);
 $workshep   = new workshep($workshep, $cm, $course);
 
-$PAGE->set_url($workshep->allocation_url($method));
+$url = $workshep->allocation_url($method);
+$PAGE->set_url($url);
 
 require_login($course, false, $cm);
 $context = $PAGE->context;
@@ -46,7 +47,11 @@ require_capability('mod/workshep:allocate', $context);
 
 $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
-$PAGE->navbar->add(get_string('allocation', 'workshep'));
+$PAGE->navbar->add(get_string('allocation', 'workshep'), $workshep->allocation_url($method));
+$PAGE->activityheader->set_attrs([
+    'hidecompletion' => true,
+    'description' => ''
+]);
 
 $allocator  = $workshep->allocator_instance($method);
 $initresult = $allocator->init();
@@ -54,26 +59,11 @@ $initresult = $allocator->init();
 //
 // Output starts here
 //
+$actionbar = new \mod_workshep\output\actionbar($url, $workshep); // BASE-4539.
+
 $output = $PAGE->get_renderer('mod_workshep');
 echo $output->header();
-echo $OUTPUT->heading(format_string($workshep->name));
-
-$allocators = workshep::installed_allocators();
-if (!empty($allocators)) {
-    $tabs       = array();
-    $row        = array();
-    $inactive   = array();
-    $activated  = array();
-    foreach ($allocators as $methodid => $methodname) {
-            
-        $row[] = new tabobject($methodid, $workshep->allocation_url($methodid)->out(), $methodname);
-        if ($methodid == $method) {
-            $currenttab = $methodid;
-        }
-    }
-}
-$tabs[] = $row;
-print_tabs($tabs, $currenttab, $inactive, $activated);
+echo $output->render_allocation_menu($actionbar);
 
 if (is_null($initresult->get_status()) or $initresult->get_status() == workshep_allocation_result::STATUS_VOID) {
     echo $output->container_start('allocator-ui');

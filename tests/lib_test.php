@@ -20,6 +20,8 @@
  * @copyright  2017 Simey Lameze <simey@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace mod_workshep;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -31,12 +33,12 @@ require_once($CFG->dirroot . '/mod/workshep/lib.php');
  * @copyright  2017 Simey Lameze <simey@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class mod_workshep_lib_testcase extends advanced_testcase {
+final class lib_test extends \advanced_testcase {
 
     /**
      * Test calendar event provide action open.
      */
-    public function test_workshep_core_calendar_provide_event_action_open() {
+    public function test_workshep_core_calendar_provide_event_action_open(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -57,9 +59,65 @@ class mod_workshep_lib_testcase extends advanced_testcase {
     }
 
     /**
+     * Test calendar event provide action open for a non user.
+     */
+    public function test_workshep_core_calendar_provide_event_action_open_for_non_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $now = time();
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', ['course' => $course->id,
+            'submissionstart' => $now - DAYSECS, 'submissionend' => $now + DAYSECS]);
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+
+        // Now, log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory);
+
+        // Confirm the event is not shown at all.
+        $this->assertNull($actionevent);
+    }
+
+    /**
+     * Test calendar event provide action open when user id is provided.
+     */
+    public function test_workshep_core_calendar_provide_event_action_open_for_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $now = time();
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', ['course' => $course->id,
+            'submissionstart' => $now - DAYSECS, 'submissionend' => $now + DAYSECS]);
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Now log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory, $student->id);
+
+        $this->assertInstanceOf('\core_calendar\local\event\value_objects\action', $actionevent);
+        $this->assertEquals(get_string('viewworkshepsummary', 'workshep'), $actionevent->get_name());
+        $this->assertInstanceOf('moodle_url', $actionevent->get_url());
+        $this->assertEquals(1, $actionevent->get_item_count());
+        $this->assertTrue($actionevent->is_actionable());
+    }
+
+    /**
      * Test calendar event provide action closed.
      */
-    public function test_workshep_core_calendar_provide_event_action_closed() {
+    public function test_workshep_core_calendar_provide_event_action_closed(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -79,11 +137,63 @@ class mod_workshep_lib_testcase extends advanced_testcase {
     }
 
     /**
-     * Test calendar event action open in future.
-     *
-     * @throws coding_exception
+     * Test calendar event provide action closed for a non user.
      */
-    public function test_workshep_core_calendar_provide_event_action_open_in_future() {
+    public function test_workshep_core_calendar_provide_event_action_closed_for_non_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', array('course' => $course->id,
+            'submissionend' => time() - DAYSECS));
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+
+        // Now, log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory);
+
+        // Confirm the event is not shown at all.
+        $this->assertNull($actionevent);
+    }
+
+    /**
+     * Test calendar event provide action closed when user id is provided.
+     */
+    public function test_workshep_core_calendar_provide_event_action_closed_for_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', array('course' => $course->id,
+            'submissionend' => time() - DAYSECS));
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Now log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory, $student->id);
+
+        $this->assertInstanceOf('\core_calendar\local\event\value_objects\action', $actionevent);
+        $this->assertEquals(get_string('viewworkshepsummary', 'workshep'), $actionevent->get_name());
+        $this->assertInstanceOf('moodle_url', $actionevent->get_url());
+        $this->assertEquals(1, $actionevent->get_item_count());
+        $this->assertTrue($actionevent->is_actionable());
+    }
+
+    /**
+     * Test calendar event action open in future.
+     */
+    public function test_workshep_core_calendar_provide_event_action_open_in_future(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -103,11 +213,63 @@ class mod_workshep_lib_testcase extends advanced_testcase {
     }
 
     /**
-     * Test calendar event with no time specified.
-     *
-     * @throws coding_exception
+     * Test calendar event action open in future for a non user.
      */
-    public function test_workshep_core_calendar_provide_event_action_no_time_specified() {
+    public function test_workshep_core_calendar_provide_event_action_open_in_future_for_non_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', ['course' => $course->id,
+            'submissionstart' => time() + DAYSECS]);
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+
+        // Now, log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory);
+
+        // Confirm the event is not shown at all.
+        $this->assertNull($actionevent);
+    }
+
+    /**
+     * Test calendar event action open in future when user id is provided.
+     */
+    public function test_workshep_core_calendar_provide_event_action_open_in_future_for_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', ['course' => $course->id,
+            'submissionstart' => time() + DAYSECS]);
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Now log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory, $student->id);
+
+        $this->assertInstanceOf('\core_calendar\local\event\value_objects\action', $actionevent);
+        $this->assertEquals(get_string('viewworkshepsummary', 'workshep'), $actionevent->get_name());
+        $this->assertInstanceOf('moodle_url', $actionevent->get_url());
+        $this->assertEquals(1, $actionevent->get_item_count());
+        $this->assertTrue($actionevent->is_actionable());
+    }
+
+    /**
+     * Test calendar event with no time specified.
+     */
+    public function test_workshep_core_calendar_provide_event_action_no_time_specified(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -126,6 +288,95 @@ class mod_workshep_lib_testcase extends advanced_testcase {
     }
 
     /**
+     * Test calendar event with no time specified for a non user.
+     */
+    public function test_workshep_core_calendar_provide_event_action_no_time_specified_for_non_user(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = $this->getDataGenerator()->create_module('workshep', ['course' => $course->id]);
+        $event = $this->create_action_event($course->id, $workshep->id, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN);
+
+        // Now, log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        $factory = new \core_calendar\action_factory();
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory);
+
+        // Confirm the event is not shown at all.
+        $this->assertNull($actionevent);
+    }
+
+    public function test_workshep_core_calendar_provide_event_action_already_completed(): void {
+        $this->resetAfterTest();
+        set_config('enablecompletion', 1);
+        $this->setAdminUser();
+
+        // Create the activity.
+        $course = $this->getDataGenerator()->create_course(array('enablecompletion' => 1));
+        $workshep = $this->getDataGenerator()->create_module('workshep', array('course' => $course->id),
+            array('completion' => 2, 'completionview' => 1, 'completionexpected' => time() + DAYSECS));
+
+        // Get some additional data.
+        $cm = get_coursemodule_from_instance('workshep', $workshep->id);
+
+        // Create a calendar event.
+        $event = $this->create_action_event($course->id, $workshep->id,
+            \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
+
+        // Mark the activity as completed.
+        $completion = new \completion_info($course);
+        $completion->set_module_viewed($cm);
+
+        // Create an action factory.
+        $factory = new \core_calendar\action_factory();
+
+        // Decorate action event.
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory);
+
+        // Ensure result was null.
+        $this->assertNull($actionevent);
+    }
+
+    public function test_workshep_core_calendar_provide_event_action_already_completed_for_user(): void {
+        $this->resetAfterTest();
+        set_config('enablecompletion', 1);
+        $this->setAdminUser();
+
+        // Create the activity.
+        $course = $this->getDataGenerator()->create_course(array('enablecompletion' => 1));
+        $workshep = $this->getDataGenerator()->create_module('workshep', array('course' => $course->id),
+            array('completion' => 2, 'completionview' => 1, 'completionexpected' => time() + DAYSECS));
+
+        // Enrol a student in the course.
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Get some additional data.
+        $cm = get_coursemodule_from_instance('workshep', $workshep->id);
+
+        // Create a calendar event.
+        $event = $this->create_action_event($course->id, $workshep->id,
+            \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
+
+        // Mark the activity as completed for the student.
+        $completion = new \completion_info($course);
+        $completion->set_module_viewed($cm, $student->id);
+
+        // Create an action factory.
+        $factory = new \core_calendar\action_factory();
+
+        // Decorate action event for the student.
+        $actionevent = mod_workshep_core_calendar_provide_event_action($event, $factory, $student->id);
+
+        // Ensure result was null.
+        $this->assertNull($actionevent);
+    }
+
+    /**
      * Creates an action event.
      *
      * @param int $courseid The course id.
@@ -134,7 +385,7 @@ class mod_workshep_lib_testcase extends advanced_testcase {
      * @return bool|calendar_event
      */
     private function create_action_event($courseid, $instanceid, $eventtype) {
-        $event = new stdClass();
+        $event = new \stdClass();
         $event->name = 'Calendar event';
         $event->modulename = 'workshep';
         $event->courseid = $courseid;
@@ -143,13 +394,13 @@ class mod_workshep_lib_testcase extends advanced_testcase {
         $event->eventtype = $eventtype;
         $event->timestart = time();
 
-        return calendar_event::create($event);
+        return \calendar_event::create($event);
     }
 
     /**
      * Test check_updates_since callback.
      */
-    public function test_check_updates_since() {
+    public function test_check_updates_since(): void {
         global $DB;
 
         $this->resetAfterTest();
@@ -174,8 +425,8 @@ class mod_workshep_lib_testcase extends advanced_testcase {
         );
         $workshep = $this->getDataGenerator()->create_module('workshep', $record);
         $cm = get_coursemodule_from_instance('workshep', $workshep->id, $course->id);
-        $context = context_module::instance($cm->id);
-        $cm = cm_info::create($cm);
+        $context = \context_module::instance($cm->id);
+        $cm = \cm_info::create($cm);
 
         $this->setUser($student);
         // Check that upon creation, the updates are only about the new configuration created.
@@ -240,5 +491,281 @@ class mod_workshep_lib_testcase extends advanced_testcase {
         // The teacher didn't do anything.
         $this->assertFalse($updates->submissions->updated);
         $this->assertFalse($updates->assessments->updated);
+    }
+
+    /**
+     * An unknown event type should not have any limits
+     */
+    public function test_mod_workshep_core_calendar_get_valid_event_timestart_range_unknown_event(): void {
+        global $CFG;
+        require_once($CFG->dirroot . "/calendar/lib.php");
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $timestart = time();
+        $timeend = $timestart + DAYSECS;
+        $workshep = new \stdClass();
+        $workshep->submissionstart = $timestart;
+        $workshep->submissionend = $timeend;
+        $workshep->assessmentstart = 0;
+        $workshep->assessmentend = 0;
+
+        // Create a valid event.
+        $event = new \calendar_event([
+            'name' => 'Test event',
+            'description' => '',
+            'format' => 1,
+            'courseid' => $course->id,
+            'groupid' => 0,
+            'userid' => 2,
+            'modulename' => 'workshep',
+            'instance' => 1,
+            'eventtype' => WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE . "SOMETHING ELSE",
+            'timestart' => 1,
+            'timeduration' => 86400,
+            'visible' => 1
+        ]);
+        list ($min, $max) = mod_workshep_core_calendar_get_valid_event_timestart_range($event, $workshep);
+        $this->assertNull($min);
+        $this->assertNull($max);
+    }
+
+    /**
+     * Provider for test_mod_workshep_core_calendar_get_valid_event_timestart_range.
+     *
+     * @return array of (submissionstart, submissionend, assessmentstart, assessmentend, eventtype, expectedmin, expectedmax)
+     */
+    public static function mod_workshep_core_calendar_get_valid_event_timestart_range_due_no_limit_provider(): array {
+        $submissionstart = time() + DAYSECS;
+        $submissionend = $submissionstart + DAYSECS;
+        $assessmentstart = $submissionend + DAYSECS;
+        $assessmentend = $assessmentstart + DAYSECS;
+
+        return [
+            'Only with submissionstart' => [$submissionstart, 0, 0, 0, WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN, null, null],
+            'Only with submissionend' => [0, $submissionend, 0, 0, WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE, null, null],
+            'Only with assessmentstart' => [0, 0, $assessmentstart, 0, WORKSHEP_EVENT_TYPE_ASSESSMENT_OPEN, null, null],
+            'Only with assessmentend' => [0, 0, 0, $assessmentend, WORKSHEP_EVENT_TYPE_ASSESSMENT_CLOSE, null, null],
+
+            'Move submissionstart when with submissionend' => [$submissionstart, $submissionend, 0, 0,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN, null, $submissionend - 1],
+            'Move submissionend when with submissionstart' => [$submissionstart, $submissionend, 0, 0,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE, $submissionstart + 1, null],
+            'Move assessmentstart when with assessmentend' => [0, 0, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_OPEN, null, $assessmentend - 1],
+            'Move assessmentend when with assessmentstart' => [0, 0, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_CLOSE, $assessmentstart + 1, null],
+
+            'Move submissionstart when with assessmentstart' => [$submissionstart, 0, $assessmentstart, 0,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN, null, $assessmentstart],
+            'Move submissionstart when with assessmentend' => [$submissionstart, 0, 0, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN, null, $assessmentend],
+            'Move submissionend when with assessmentstart' => [0, $submissionend, $assessmentstart, 0,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE, null, $assessmentstart],
+            'Move submissionend when with assessmentend' => [0, $submissionend, 0, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE, null, $assessmentend],
+
+            'Move assessmentstart when with submissionstart' => [$submissionstart, 0, $assessmentstart, 0,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_OPEN, $submissionstart, null],
+            'Move assessmentstart when with submissionend' => [0, $submissionend, $assessmentstart, 0,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_OPEN, $submissionend, null],
+            'Move assessmentend when with submissionstart' => [$submissionstart, 0, 0, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_CLOSE, $submissionstart, null],
+            'Move assessmentend when with submissionend' => [0, $submissionend, 0, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_CLOSE, $submissionend, null],
+
+            'Move submissionstart when with others' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN, null, $submissionend - 1],
+            'Move submissionend when with others' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE, $submissionstart + 1, $assessmentstart],
+            'Move assessmentstart when with others' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_OPEN, $submissionend, $assessmentend - 1],
+            'Move assessmentend when with others' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_CLOSE, $assessmentstart + 1, null],
+        ];
+    }
+
+    /**
+     * Tests mod_workshep_core_calendar_get_valid_event_timestart_range in various settings.
+     *
+     * @dataProvider mod_workshep_core_calendar_get_valid_event_timestart_range_due_no_limit_provider
+     *
+     * @param int $submissionstart  The start of the submission phase
+     * @param int $submissionend    The end of the submission phase
+     * @param int $assessmentstart  The start of the assessment phase
+     * @param int $assessmentend    The end of the assessment phase
+     * @param string $eventtype     The type if the event
+     * @param int|null $expectedmin The expected value for min of the valid event range
+     * @param int|null $expectedmax The expected value for max of the valid event range
+     */
+    public function test_mod_workshep_core_calendar_get_valid_event_timestart_range($submissionstart, $submissionend,
+            $assessmentstart, $assessmentend, $eventtype, $expectedmin, $expectedmax): void {
+
+        global $CFG;
+        require_once($CFG->dirroot . '/calendar/lib.php');
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $workshep = new \stdClass();
+        $workshep->submissionstart = $submissionstart;
+        $workshep->submissionend = $submissionend;
+        $workshep->assessmentstart = $assessmentstart;
+        $workshep->assessmentend = $assessmentend;
+
+        // Create a valid event.
+        $event = new \calendar_event([
+            'name' => 'Test event',
+            'description' => '',
+            'format' => 1,
+            'courseid' => $course->id,
+            'groupid' => 0,
+            'userid' => 2,
+            'modulename' => 'workshep',
+            'instance' => 1,
+            'eventtype' => $eventtype,
+            'timestart' => 1,
+            'timeduration' => 86400,
+            'visible' => 1
+        ]);
+        list($min, $max) = mod_workshep_core_calendar_get_valid_event_timestart_range($event, $workshep);
+
+        $this->assertSame($expectedmin, is_array($min) ? $min[0] : $min);
+        $this->assertSame($expectedmax, is_array($max) ? $max[0] : $max);
+    }
+
+    /**
+     * An unknown event type should not change the workshep instance.
+     */
+    public function test_mod_workshep_core_calendar_event_timestart_updated_unknown_event(): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . "/calendar/lib.php");
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        $workshepgenerator = $generator->get_plugin_generator('mod_workshep');
+        $submissionstart = time() + DAYSECS;
+        $submissionend = $submissionstart + DAYSECS;
+        $assessmentstart = $submissionend + DAYSECS;
+        $assessmentend = $assessmentstart + DAYSECS;
+        $workshep = $workshepgenerator->create_instance(['course' => $course->id]);
+        $workshep->submissionstart = $submissionstart;
+        $workshep->submissionend = $submissionend;
+        $workshep->assessmentstart = $assessmentstart;
+        $workshep->assessmentend = $assessmentend;
+        $DB->update_record('workshep', $workshep);
+
+        // Create a valid event.
+        $event = new \calendar_event([
+            'name' => 'Test event',
+            'description' => '',
+            'format' => 1,
+            'courseid' => $course->id,
+            'groupid' => 0,
+            'userid' => 2,
+            'modulename' => 'workshep',
+            'instance' => $workshep->id,
+            'eventtype' => WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE . "SOMETHING ELSE",
+            'timestart' => 1,
+            'timeduration' => 86400,
+            'visible' => 1
+        ]);
+
+        mod_workshep_core_calendar_event_timestart_updated($event, $workshep);
+
+        $workshep = $DB->get_record('workshep', ['id' => $workshep->id]);
+        $this->assertEquals($submissionstart, $workshep->submissionstart);
+        $this->assertEquals($submissionend, $workshep->submissionend);
+        $this->assertEquals($assessmentstart, $workshep->assessmentstart);
+        $this->assertEquals($assessmentend, $workshep->assessmentend);
+    }
+
+    /**
+     * Provider for test_mod_workshep_core_calendar_event_timestart_updated.
+     *
+     * @return array of (submissionstart, submissionend, assessmentstart, assessmentend, eventtype, fieldtoupdate, newtime)
+     */
+    public static function mod_workshep_core_calendar_event_timestart_updated_provider(): array {
+        $submissionstart = time() + DAYSECS;
+        $submissionend = $submissionstart + DAYSECS;
+        $assessmentstart = $submissionend + DAYSECS;
+        $assessmentend = $assessmentstart + DAYSECS;
+
+        return [
+            'Move submissionstart' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_OPEN, 'submissionstart', $submissionstart + 50],
+            'Move submissionend' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_SUBMISSION_CLOSE, 'submissionend', $submissionend + 50],
+            'Move assessmentstart' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_OPEN, 'assessmentstart', $assessmentstart + 50],
+            'Move assessmentend' => [$submissionstart, $submissionend, $assessmentstart, $assessmentend,
+                    WORKSHEP_EVENT_TYPE_ASSESSMENT_CLOSE, 'assessmentend', $assessmentend + 50],
+        ];
+    }
+
+    /**
+     * Due date events should update the workshep due date.
+     *
+     * @dataProvider mod_workshep_core_calendar_event_timestart_updated_provider
+     *
+     * @param int $submissionstart  The start of the submission phase
+     * @param int $submissionend    The end of the submission phase
+     * @param int $assessmentstart  The start of the assessment phase
+     * @param int $assessmentend    The end of the assessment phase
+     * @param string $eventtype     The type if the event
+     * @param string $fieldtoupdate The field that is supposed to be updated.
+     *                              Either of 'submissionstart', 'submissionend', 'assessmentstart' or 'assessmentend'.
+     * @param int $newtime          The new value for the $fieldtoupdate
+     */
+    public function test_mod_workshep_core_calendar_event_timestart_updated($submissionstart, $submissionend, $assessmentstart,
+            $assessmentend, $eventtype, $fieldtoupdate, $newtime): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . "/calendar/lib.php");
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        $workshepgenerator = $generator->get_plugin_generator('mod_workshep');
+        $workshep = $workshepgenerator->create_instance(['course' => $course->id]);
+        $workshep->submissionstart = $submissionstart;
+        $workshep->submissionend = $submissionend;
+        $workshep->assessmentstart = $assessmentstart;
+        $workshep->assessmentend = $assessmentend;
+        $DB->update_record('workshep', $workshep);
+
+        // Create a valid event.
+        $event = new \calendar_event([
+            'name' => 'Test event',
+            'description' => '',
+            'format' => 1,
+            'courseid' => $course->id,
+            'groupid' => 0,
+            'userid' => 2,
+            'modulename' => 'workshep',
+            'instance' => $workshep->id,
+            'eventtype' => $eventtype,
+            'timestart' => $newtime,
+            'timeduration' => 86400,
+            'visible' => 1
+        ]);
+        mod_workshep_core_calendar_event_timestart_updated($event, $workshep);
+
+        $$fieldtoupdate = $newtime;
+
+        $workshep = $DB->get_record('workshep', ['id' => $workshep->id]);
+        $this->assertEquals($submissionstart, $workshep->submissionstart);
+        $this->assertEquals($submissionend, $workshep->submissionend);
+        $this->assertEquals($assessmentstart, $workshep->assessmentstart);
+        $this->assertEquals($assessmentend, $workshep->assessmentend);
     }
 }

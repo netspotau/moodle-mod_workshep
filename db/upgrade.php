@@ -23,8 +23,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Performs upgrade of the database structure and data
  *
@@ -35,37 +33,15 @@ defined('MOODLE_INTERNAL') || die();
  * @return bool result
  */
 function xmldb_workshep_upgrade($oldversion) {
-    global $CFG, $DB;
+    global $DB;
 
     $dbman = $DB->get_manager();
 
-    // Automatically generated Moodle v3.2.0 release upgrade line.
+    // Automatically generated Moodle v3.6.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Automatically generated Moodle v3.3.0 release upgrade line.
-    // Put any upgrade step following this.
 
-    // Automatically generated Moodle v3.4.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    if ($oldversion < 2018042700) {
-        // Drop the old Moodle 1.x tables, thanks privacy by design for forcing me to do so finally.
-
-        $oldtables = ['workshep_old', 'workshep_elements_old', 'workshep_rubrics_old', 'workshep_submissions_old',
-            'workshep_assessments_old', 'workshep_grades_old', 'workshep_stockcomments_old', 'workshep_comments_old'];
-
-        foreach ($oldtables as $oldtable) {
-            $table = new xmldb_table($oldtable);
-
-            if ($dbman->table_exists($table)) {
-                $dbman->drop_table($table);
-            }
-        }
-
-        upgrade_mod_savepoint(true, 2018042700, 'workshep');
-    }
-
-    // Automatically generated Moodle v3.5.0 release upgrade line.
+    // Automatically generated Moodle v3.7.0 release upgrade line.
     // Put any upgrade step following this.
 
     if ($oldversion < 2016120600) {
@@ -135,6 +111,51 @@ function xmldb_workshep_upgrade($oldversion) {
 
         upgrade_mod_savepoint(true, 2017081601, 'workshep');
     }
+
+    // Automatically generated Moodle v3.8.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v3.9.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v3.10.0 release upgrade line.
+    // Put any upgrade step following this.
+    if ($oldversion < 2020110901) {
+
+        $table = new xmldb_table('workshep_grades');
+        $field = new xmldb_field('grade');
+
+        if ($dbman->field_exists($table, $field) && ($field->getNotNull() == XMLDB_NOTNULL)) {
+            $field = new xmldb_field('grade', XMLDB_TYPE_NUMBER, '10, 5', null, false, false,
+                null, null);
+            $dbman->change_field_notnull($table, $field);
+        }
+
+        // Main savepoint reached.
+        upgrade_mod_savepoint(true, 2020110901, 'workshep');
+
+    }
+
+    // Automatically generated Moodle v3.11.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.1.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.2.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.3.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.4.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    // Automatically generated Moodle v4.5.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

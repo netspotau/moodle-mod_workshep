@@ -1,5 +1,5 @@
 @mod @mod_workshep
-Feature: Workshop 'Late submissions are allowed' task
+Feature: Workshep 'Late submissions are allowed' task
   In order to encourage students submit their submissions on time when late submissions are allowed
   We want only students who have not submitted their work to see the 'Late submissions are allowed' task
   and they can only see this after the submission deadline.
@@ -19,68 +19,50 @@ Feature: Workshop 'Late submissions are allowed' task
       | student2 | c1     | student        |
       | teacher1 | c1     | editingteacher |
     And the following "activities" exist:
-      | activity | name          | intro                                              | course | idnumber  | latesubmissions | submisstionstart | submissionend |
-      | workshep | TestWorkshop1 | TW3 with Submission deadline in future (1 Jan 2030)| c1     | workshep1 | 1               | 1514904308       | 1893369600    |
+      | activity | name          | course | idnumber  | latesubmissions | submisstionstart | submissionend |
+      | workshep | TestWorkshep1 | c1     | workshep1 | 1               | 1514904308       | 1893369600    |
     # Teacher sets up assessment form and changes the phase to submission.
-    And I log in as "teacher1"
-    And I am on "Course1" course homepage
-    And I follow "TestWorkshop1"
-    And I edit assessment form in workshep "TestWorkshop1" as:"
+    And I am on the "TestWorkshep1" "workshep activity" page logged in as teacher1
+    And I edit assessment form in workshep "TestWorkshep1" as:
       | id_description__idx_0_editor | Aspect1 |
       | id_description__idx_1_editor | Aspect2 |
       | id_description__idx_2_editor | Aspect3 |
-    And I change phase in workshep "TestWorkshop1" to "Submission phase"
-    And I log out
+    And I change phase in workshep "TestWorkshep1" to "Submission phase"
 
   @javascript
-  Scenario: Student1 add his submission to TestWorkshop1 before submission deadline, but student2 does not submitt
+  Scenario: Student1 add his submission to TestWorkshep1 before submission deadline, but student2 does not submitt
     # Student1 submits.
-    Given I log in as "student1"
-    And I am on "Course1" course homepage
-    When I follow "TestWorkshop1"
+    When I am on the "TestWorkshep1" "workshep activity" page logged in as student1
     Then I should see "Submissions deadline:"
     And I should not see "Late submissions are allowed"
-    And I add a submission in workshep "TestWorkshop1" as:"
+    And I add a submission in workshep "TestWorkshep1" as:
       | Title              | Submission from s1  |
       | Submission content | Some content from student1 |
-    And I log out
 
     # Teacher modifies submission deadline.
-    Given I log in as "teacher1"
-    And I am on "Course1" course homepage
-    When I follow "TestWorkshop1"
+    When I am on the "TestWorkshep1" "workshep activity" page logged in as teacher1
     Then I should see "Late submissions are allowed"
-    And I navigate to "Edit settings" in current page administration
-    And I follow "Expand all"
+    And I navigate to "Settings" in current page administration
+    And I click on "Expand all" "link" in the "region-main" "region"
     And I set the field "id_submissionend_day" to "1"
     And I set the field "id_submissionend_month" to "January"
     And I set the field "id_submissionend_year" to "2018"
     And I click on "Save and display" "button"
     And I follow "Switch to the assessment phase"
-    And I log out
 
     # Student1 has already submitted and cannot see 'Late submissions are allowed'.
-    Given I log in as "student1"
-    And I am on "Course1" course homepage
-    When I follow "TestWorkshop1"
+    When I am on the "TestWorkshep1" "workshep activity" page logged in as student1
     Then I should see "Submissions deadline:"
     And I should not see "Late submissions are allowed"
-    And I log out
 
     # Student2 has not submitted yet who can see 'Late submissions are allowed' text after the submission deadline.
-    Given I log in as "student2"
-    And I am on "Course1" course homepage
-    When I follow "TestWorkshop1"
+    When I am on the "TestWorkshep1" "workshep activity" page logged in as student2
     Then I should see "Submissions deadline:"
     And I should see "Monday, 1 January 2018"
     And I should see "Late submissions are allowed"
-    And I log out
 
     # Teacher can see 'Late submissions are allowed' text after submission deadline.
-    Given I log in as "teacher1"
-    And I am on "Course1" course homepage
-    When I follow "TestWorkshop1"
+    When I am on the "TestWorkshep1" "workshep activity" page logged in as teacher1
     Then I should see "Submissions deadline:"
     And I should see "Monday, 1 January 2018"
     And I should see "Late submissions are allowed"
-    And I log out

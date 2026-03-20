@@ -40,6 +40,9 @@ class workshep_edit_strategy_form extends moodleform {
     /** strategy logic instance that this class is editor of */
     protected $strategy;
 
+    /** @var workshep workshep. */
+    protected $workshep;
+
     /**
      * Add the fields that are common for all grading strategies.
      *

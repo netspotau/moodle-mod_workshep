@@ -35,7 +35,7 @@ $cm         = get_coursemodule_from_instance('workshep', $workshep->id, $course-
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new \moodle_exception('guestsarenotallowed');
 }
 $workshep = new workshep($workshep, $cm, $course);
 
@@ -43,6 +43,7 @@ $PAGE->set_url($workshep->exassess_url($assessment->id));
 $PAGE->set_title($workshep->name);
 $PAGE->set_heading($course->fullname);
 $PAGE->navbar->add(get_string('assessingexample', 'workshep'));
+$PAGE->set_secondary_active_tab('modulepage');
 $currenttab = 'assessment';
 
 $canmanage  = has_capability('mod/workshep:manageexamples', $workshep->context);
@@ -51,7 +52,7 @@ $isreviewer = ($USER->id == $assessment->reviewerid);
 if ($isreviewer or $canmanage) {
     // such a user can continue
 } else {
-    print_error('nopermissions', 'error', $workshep->view_url(), 'assess example submission');
+    throw new \moodle_exception('nopermissions', 'error', $workshep->view_url(), 'assess example submission');
 }
 
 // only the reviewer is allowed to modify the assessment
@@ -110,7 +111,20 @@ if ($mform->is_cancelled()) {
         $calibrationdata->comparison = $workshep->calibrationcomparison;
         $calibrationdata->consistency = $workshep->calibrationconsistency;
         $calibration->calculate_calibration_scores($calibrationdata);   // updates 'gradinggrade' in {workshep_assessments}
-        $workshep->log('update calibration scores');
+        // BASE-5468: Replaced legacy logging process when updating calibration was updated.
+
+        $params = array(
+            'relateduserid' => $assessment->reviewerid,
+            'objectid' => $assessment->id,
+            'context' => $workshep->context,
+            'other' => array(
+                'workshepid' => $workshep->id,
+                'submissionid' => $assessment->submissionid
+            )
+        );
+
+        $event = \mod_workshep\event\update_calibration_scores::create($params); // BASE-5468.
+        $event->trigger();
     }
 
     // Store the data managed by the workshep core.
@@ -156,7 +170,9 @@ if ($mform->is_cancelled()) {
 // output starts here
 $output = $PAGE->get_renderer('mod_workshep');      // workshep renderer
 echo $output->header();
-echo $output->heading(format_string($workshep->name));
+if (!$PAGE->has_secondary_navigation()) {
+    echo $output->heading(format_string($workshep->name));
+}
 echo $output->heading(get_string('assessedexample', 'workshep'), 3);
 
 $example = $workshep->get_example_by_id($example->id);     // reload so can be passed to the renderer
@@ -167,7 +183,8 @@ echo $output->render($workshep->prepare_example_submission(($example)));
 if (trim($workshep->instructreviewers)) {
     $instructions = file_rewrite_pluginfile_urls($workshep->instructreviewers, 'pluginfile.php', $PAGE->context->id,
         'mod_workshep', 'instructreviewers', null, workshep::instruction_editors_options($PAGE->context));
-    print_collapsible_region_start('', 'workshep-viewlet-instructreviewers', get_string('instructreviewers', 'workshep'));
+    print_collapsible_region_start('', 'workshep-viewlet-instructreviewers', get_string('instructreviewers', 'workshep'),
+            'workshep-viewlet-instructreviewers-collapsed');
     echo $output->box(format_text($instructions, $workshep->instructreviewersformat, array('overflowdiv'=>true)), array('generalbox', 'instructions'));
     print_collapsible_region_end();
 }

@@ -34,7 +34,7 @@ $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST)
 
 require_login($course, false, $cm);
 if (isguestuser()) {
-    print_error('guestsarenotallowed');
+    throw new \moodle_exception('guestsarenotallowed');
 }
 
 $workshep = $DB->get_record('workshep', array('id' => $cm->instance), '*', MUST_EXIST);
@@ -46,7 +46,7 @@ $PAGE->set_url($workshep->excompare_url($sid, $aid));
 $example    = $workshep->get_example_by_id($sid);
 $assessment = $workshep->get_assessment_by_id($aid);
 if ($assessment->submissionid != $example->id) {
-   print_error('invalidarguments');
+    throw new \moodle_exception('invalidarguments');
 }
 $mformassessment = $strategy->get_assessment_form($PAGE->url, 'assessment', $assessment, false);
 if ($refasid = $DB->get_field('workshep_assessments', 'id', array('submissionid' => $example->id, 'weight' => 1))) {
@@ -62,7 +62,7 @@ if ($canmanage) {
 } elseif ($isreviewer and $workshep->assessing_examples_allowed()) {
     // ok you can go
 } else {
-    print_error('nopermissions', 'error', $workshep->view_url(), 'compare example assessment');
+    throw new \moodle_exception('nopermissions', 'error', $workshep->view_url(), 'compare example assessment');
 }
 
 $PAGE->set_title($workshep->name);
@@ -72,7 +72,11 @@ $PAGE->navbar->add(get_string('examplecomparing', 'workshep'));
 // Output starts here
 $output = $PAGE->get_renderer('mod_workshep');
 echo $output->header();
-echo $output->heading(format_string($workshep->name));
+// Output the back button.
+echo $output->single_button($workshep->view_url(), get_string('back'), 'get', ['class' => 'mb-3']);
+if (!$PAGE->has_secondary_navigation()) {
+    echo $output->heading(format_string($workshep->name));
+}
 echo $output->heading(get_string('assessedexample', 'workshep'), 3);
 
 echo $output->render($workshep->prepare_example_submission($example));

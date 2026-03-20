@@ -48,30 +48,6 @@ class course_module_viewed extends \core\event\course_module_viewed {
         $this->data['objecttable'] = 'workshep';
     }
 
-    /**
-     * Does this event replace a legacy event?
-     *
-     * @return string legacy event name
-     */
-    public static function get_legacy_eventname() {
-        return 'workshep_viewed';
-    }
-
-    /**
-     * Legacy event data if get_legacy_eventname() is not empty.
-     *
-     * @return mixed
-     */
-    protected function get_legacy_eventdata() {
-        global $USER;
-
-        $workshep = $this->get_record_snapshot('workshep', $this->objectid);
-        $course   = $this->get_record_snapshot('course', $this->courseid);
-        $cm       = $this->get_record_snapshot('course_modules', $this->contextinstanceid);
-        $workshep = new \workshep($workshep, $cm, $course);
-        return (object)array('workshep' => $workshep, 'user' => $USER);
-    }
-
     public static function get_objectid_mapping() {
         return array('db' => 'workshep', 'restore' => 'workshep');
     }

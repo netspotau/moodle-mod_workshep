@@ -15,19 +15,21 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Provides the {@link mod_workshep_privacy_provider_testcase} class.
+ * Provides the {@see mod_workshep\privacy\provider_test} class.
  *
  * @package     mod_workshep
  * @category    test
  * @copyright   2018 David Mudrák <david@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace mod_workshep\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
 use core_privacy\local\request\writer;
+use core_privacy\tests\provider_testcase;
 
 /**
  * Unit tests for the privacy API implementation.
@@ -35,7 +37,7 @@ use core_privacy\local\request\writer;
  * @copyright 2018 David Mudrák <david@moodle.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class mod_workshep_privacy_provider_testcase extends advanced_testcase {
+final class provider_test extends provider_testcase {
 
     /** @var testing_data_generator */
     protected $generator;
@@ -120,8 +122,9 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
      *
      *  etc.
      */
-    protected function setUp() {
+    protected function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest();
         $this->setAdminUser();
 
@@ -176,42 +179,85 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
     /**
      * Test {@link \mod_workshep\privacy\provider::get_contexts_for_userid()} implementation.
      */
-    public function test_get_contexts_for_userid() {
+    public function test_get_contexts_for_userid(): void {
 
         $cm11 = get_coursemodule_from_instance('workshep', $this->workshep11->id);
         $cm12 = get_coursemodule_from_instance('workshep', $this->workshep12->id);
         $cm21 = get_coursemodule_from_instance('workshep', $this->workshep21->id);
 
-        $context11 = context_module::instance($cm11->id);
-        $context12 = context_module::instance($cm12->id);
-        $context21 = context_module::instance($cm21->id);
+        $context11 = \context_module::instance($cm11->id);
+        $context12 = \context_module::instance($cm12->id);
+        $context21 = \context_module::instance($cm21->id);
 
         // Student1 has data in workshep11 (author + self reviewer), workshep12 (author) and workshep21 (reviewer).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->student1->id);
         $this->assertInstanceOf(\core_privacy\local\request\contextlist::class, $contextlist);
-        $this->assertEquals([$context11->id, $context12->id, $context21->id], $contextlist->get_contextids(),
-            'Student1 has data in workshep11 (author + self reviewer), workshep12 (author) and workshep21 (reviewer).', 0.0, 10, true);
+        $this->assertEqualsCanonicalizing([$context11->id, $context12->id, $context21->id], $contextlist->get_contextids());
 
         // Student2 has data in workshep11 (reviewer), workshep12 (reviewer) and workshep21 (author).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->student2->id);
-        $this->assertEquals([$context11->id, $context12->id, $context21->id], $contextlist->get_contextids(),
-            'Student2 has data in workshep11 (reviewer), workshep12 (reviewer) and workshep21 (author).', 0.0, 10, true);
+        $this->assertEqualsCanonicalizing([$context11->id, $context12->id, $context21->id], $contextlist->get_contextids());
 
         // Student3 has data in workshep11 (reviewer).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->student3->id);
-        $this->assertEquals([$context11->id], $contextlist->get_contextids(),
-            'Student3 has data in workshep11 (reviewer).', 0.0, 10, true);
+        $this->assertEqualsCanonicalizing([$context11->id], $contextlist->get_contextids());
 
         // Teacher4 has data in workshep12 (gradeoverby) and workshep21 (gradinggradeoverby).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->teacher4->id);
-        $this->assertEquals([$context21->id, $context12->id], $contextlist->get_contextids(),
-            'Teacher4 has data in workshep12 (gradeoverby) and workshep21 (gradinggradeoverby).', 0.0, 10, true);
+        $this->assertEqualsCanonicalizing([$context21->id, $context12->id], $contextlist->get_contextids());
+    }
+
+    /**
+     * Test {@link \mod_workshep\privacy\provider::get_users_in_context()} implementation.
+     */
+    public function test_get_users_in_context(): void {
+
+        $cm11 = get_coursemodule_from_instance('workshep', $this->workshep11->id);
+        $cm12 = get_coursemodule_from_instance('workshep', $this->workshep12->id);
+        $cm21 = get_coursemodule_from_instance('workshep', $this->workshep21->id);
+
+        $context11 = \context_module::instance($cm11->id);
+        $context12 = \context_module::instance($cm12->id);
+        $context21 = \context_module::instance($cm21->id);
+
+        // Users in the workshep11.
+        $userlist11 = new \core_privacy\local\request\userlist($context11, 'mod_workshep');
+        \mod_workshep\privacy\provider::get_users_in_context($userlist11);
+        $expected11 = [
+            $this->student1->id, // Student1 has data in workshep11 (author + self reviewer).
+            $this->student2->id, // Student2 has data in workshep11 (reviewer).
+            $this->student3->id, // Student3 has data in workshep11 (reviewer).
+        ];
+        $actual11 = $userlist11->get_userids();
+        $this->assertEqualsCanonicalizing($expected11, $actual11);
+
+        // Users in the workshep12.
+        $userlist12 = new \core_privacy\local\request\userlist($context12, 'mod_workshep');
+        \mod_workshep\privacy\provider::get_users_in_context($userlist12);
+        $expected12 = [
+            $this->student1->id, // Student1 has data in workshep12 (author).
+            $this->student2->id, // Student2 has data in workshep12 (reviewer).
+            $this->teacher4->id, // Teacher4 has data in workshep12 (gradeoverby).
+        ];
+        $actual12 = $userlist12->get_userids();
+        $this->assertEqualsCanonicalizing($expected12, $actual12);
+
+        // Users in the workshep21.
+        $userlist21 = new \core_privacy\local\request\userlist($context21, 'mod_workshep');
+        \mod_workshep\privacy\provider::get_users_in_context($userlist21);
+        $expected21 = [
+            $this->student1->id, // Student1 has data in workshep21 (reviewer).
+            $this->student2->id, // Student2 has data in workshep21 (author).
+            $this->teacher4->id, // Teacher4 has data in workshep21 (gradinggradeoverby).
+        ];
+        $actual21 = $userlist21->get_userids();
+        $this->assertEqualsCanonicalizing($expected21, $actual21);
     }
 
     /**
      * Test {@link \mod_workshep\privacy\provider::export_user_data()} implementation.
      */
-    public function test_export_user_data_1() {
+    public function test_export_user_data_1(): void {
 
         $contextlist = new \core_privacy\local\request\approved_contextlist($this->student1, 'mod_workshep', [
             \context_module::instance($this->workshep11->cmid)->id,
@@ -224,7 +270,7 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
 
         $workshep = $writer->get_data([]);
         $this->assertEquals('Workshop11', $workshep->name);
-        $this->assertObjectHasAttribute('phase', $workshep);
+        $this->assertObjectHasProperty('phase', $workshep);
 
         $mysubmission = $writer->get_data([
             get_string('mysubmission', 'mod_workshep'),
@@ -263,7 +309,7 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
     /**
      * Test {@link \mod_workshep\privacy\provider::export_user_data()} implementation.
      */
-    public function test_export_user_data_2() {
+    public function test_export_user_data_2(): void {
 
         $contextlist = new \core_privacy\local\request\approved_contextlist($this->student2, 'mod_workshep', [
             \context_module::instance($this->workshep11->cmid)->id,
@@ -283,7 +329,7 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
     /**
      * Test {@link \mod_workshep\privacy\provider::delete_data_for_all_users_in_context()} implementation.
      */
-    public function test_delete_data_for_all_users_in_context() {
+    public function test_delete_data_for_all_users_in_context(): void {
         global $DB;
 
         $this->assertTrue($DB->record_exists('workshep_submissions', ['workshepid' => $this->workshep11->id]));
@@ -300,7 +346,7 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
     /**
      * Test {@link \mod_workshep\privacy\provider::delete_data_for_user()} implementation.
      */
-    public function test_delete_data_for_user() {
+    public function test_delete_data_for_user(): void {
         global $DB;
 
         $student1submissions = $DB->get_records('workshep_submissions', [
@@ -378,6 +424,118 @@ class mod_workshep_privacy_provider_testcase extends advanced_testcase {
                 $this->assertEquals(get_string('privacy:request:delete:content', 'mod_workshep'), $assessment->feedbackauthor);
                 $this->assertNotEquals(get_string('privacy:request:delete:content', 'mod_workshep'), $assessment->feedbackreviewer);
             }
+        }
+    }
+
+    /**
+     * Test {@link \mod_workshep\privacy\provider::delete_data_for_users()} implementation.
+     */
+    public function test_delete_data_for_users(): void {
+        global $DB;
+
+        // Student1 has submissions in two worksheps.
+        $this->assertFalse($this->is_submission_erased($this->submission111));
+        $this->assertFalse($this->is_submission_erased($this->submission121));
+
+        // Student1 has self-assessed one their submission.
+        $this->assertFalse($this->is_given_assessment_erased($this->assessment1111));
+        $this->assertFalse($this->is_received_assessment_erased($this->assessment1111));
+
+        // Student2 and student3 peer-assessed student1's submission.
+        $this->assertFalse($this->is_given_assessment_erased($this->assessment1112));
+        $this->assertFalse($this->is_given_assessment_erased($this->assessment1113));
+
+        // Delete data owned by student1 and student3 in the workshep11.
+
+        $context11 = \context_module::instance($this->workshep11->cmid);
+
+        $approveduserlist = new \core_privacy\local\request\approved_userlist($context11, 'mod_workshep', [
+            $this->student1->id,
+            $this->student3->id,
+        ]);
+        \mod_workshep\privacy\provider::delete_data_for_users($approveduserlist);
+
+        // Student1's submission is erased in workshep11 but not in the other workshep12.
+        $this->assertTrue($this->is_submission_erased($this->submission111));
+        $this->assertFalse($this->is_submission_erased($this->submission121));
+
+        // Student1's self-assessment is erased.
+        $this->assertTrue($this->is_given_assessment_erased($this->assessment1111));
+        $this->assertTrue($this->is_received_assessment_erased($this->assessment1111));
+
+        // Student1's received peer-assessments are also erased because they are "owned" by the recipient of the assessment.
+        $this->assertTrue($this->is_received_assessment_erased($this->assessment1112));
+        $this->assertTrue($this->is_received_assessment_erased($this->assessment1113));
+
+        // Student2's owned data in the given assessment are not erased.
+        $this->assertFalse($this->is_given_assessment_erased($this->assessment1112));
+
+        // Student3's owned data in the given assessment were erased because she/he was in the userlist.
+        $this->assertTrue($this->is_given_assessment_erased($this->assessment1113));
+
+        // Personal data in other contexts are not affected.
+        $this->assertFalse($this->is_submission_erased($this->submission121));
+        $this->assertFalse($this->is_given_assessment_erased($this->assessment2121));
+        $this->assertFalse($this->is_received_assessment_erased($this->assessment2121));
+    }
+
+    /**
+     * Check if the given submission has the author's personal data erased.
+     *
+     * @param int $submissionid Identifier of the submission.
+     * @return boolean
+     */
+    protected function is_submission_erased(int $submissionid) {
+        global $DB;
+
+        $submission = $DB->get_record('workshep_submissions', ['id' => $submissionid], 'id, title, content', MUST_EXIST);
+
+        $titledeleted = $submission->title === get_string('privacy:request:delete:title', 'mod_workshep');
+        $contentdeleted = $submission->content === get_string('privacy:request:delete:content', 'mod_workshep');
+
+        if ($titledeleted && $contentdeleted) {
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Check is the received assessment has recipient's (author's) personal data erased.
+     *
+     * @param int $assessmentid Identifier of the assessment.
+     * @return boolean
+     */
+    protected function is_received_assessment_erased(int $assessmentid) {
+        global $DB;
+
+        $assessment = $DB->get_record('workshep_assessments', ['id' => $assessmentid], 'id, feedbackauthor', MUST_EXIST);
+
+        if ($assessment->feedbackauthor === get_string('privacy:request:delete:content', 'mod_workshep')) {
+            return true;
+
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Check is the given assessment has reviewer's personal data erased.
+     *
+     * @param int $assessmentid Identifier of the assessment.
+     * @return boolean
+     */
+    protected function is_given_assessment_erased(int $assessmentid) {
+        global $DB;
+
+        $assessment = $DB->get_record('workshep_assessments', ['id' => $assessmentid], 'id, feedbackreviewer', MUST_EXIST);
+
+        if ($assessment->feedbackreviewer === get_string('privacy:request:delete:content', 'mod_workshep')) {
+            return true;
+
+        } else {
+            return false;
         }
     }
 }

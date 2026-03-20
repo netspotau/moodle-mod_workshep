@@ -33,9 +33,18 @@
     display: none;
 }
 
-.path-mod-workshep #id_rubric-grid-wrapper .rubric-grid {
+.path-mod-workshep .mform.frozen #id_rubric-grid-wrapper,
+.path-mod-workshep #id_rubric-grid-wrapper {
     margin-left: auto;
     margin-right: auto;
+    width: 100%;
+}
+
+.path-mod-workshep .mform.frozen #id_rubric-grid-wrapper .checkbox,
+.path-mod-workshep .assessmentform.rubric.grid #id_rubric-grid-wrapper .checkbox {
+    max-width: 100%;
+    flex: 0 0 100%;
+    text-align: left;
 }
 
 .path-mod-workshep .mform.frozen #id_rubric-grid-wrapper .fitem .felement,

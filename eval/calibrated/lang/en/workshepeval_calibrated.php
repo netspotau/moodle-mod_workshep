@@ -16,10 +16,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'workshepeval_best', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'workshepeval_calibrated', language 'en', branch 'MOODLE_20_STABLE'
  *
  * @package    workshepeval
- * @subpackage best
+ * @subpackage calibrated
  * @copyright  2009 David Mudrak <david@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,3 +34,6 @@ $string['pluginname'] = 'Calibrated against example assessments';
 $string['settings'] = 'Grading evaluation settings';
 
 $string['nocompetentreviewers'] = 'According to your settings, the following submissions have no competent reviewers and have not been given a mark:';
+
+// BASE-4196: Fix privacy issues
+$string['privacy:metadata'] = 'The Comparison with the calibrated assessment plugin does not store any personal data. Actual personal data user\'s grades are stored by the Workshop module itself and are attached to the exported submissions and assessments data.';

@@ -35,9 +35,6 @@ require_once($CFG->libdir . '/gradelib.php');
  */
 class workshep_best_evaluation extends workshep_evaluation {
 
-    /** @var workshep the parent workshep instance */
-    protected $workshep;
-
     /** @var the recently used settings in this workshep */
     protected $settings;
 
@@ -113,7 +110,7 @@ class workshep_best_evaluation extends workshep_evaluation {
      *
      * @return workshep_best_evaluation_settings_form
      */
-    public function get_settings_form(moodle_url $actionurl=null) {
+    public function get_settings_form(?moodle_url $actionurl=null) {
 
         $customdata['workshep'] = $this->workshep;
         $customdata['current'] = $this->settings;
@@ -129,10 +126,10 @@ class workshep_best_evaluation extends workshep_evaluation {
     public function display_messages() {
         
     }
-    
-    public function get_settings() {
-        return $this->settings;
-    }
+	
+	public function get_settings() {
+		return $this->settings;
+	}
 
     /**
      * Delete all data related to a given workshep module instance
@@ -198,7 +195,7 @@ class workshep_best_evaluation extends workshep_evaluation {
         }
 
         // identify the best assessments - that is those with the shortest distance from the best assessment
-        $bestids = array_keys($distances, min($distances));
+        $bestids = moodle_array_keys_filter($distances, min($distances));
 
         // for every assessment, calculate its distance from the nearest best assessment
         $distances = array();
