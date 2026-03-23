@@ -2334,6 +2334,11 @@ HTML;
                         'workshep-viewlet-yourgrades-collapsed', false, true);
                     $output .= $this->box_start('generalbox grades-yourgrades');
                     $output .= $this->render($finalgrades);
+                    if ($workshep->teammode) { // BASE-5405.
+                        $output .= $this->render(new workshep_grouped_grading_report($data, $reportopts));
+                    } else {
+                        $output .= $this->render(new workshep_grading_report($data, $reportopts));
+                    }
                     $output .= $this->box_end();
                     $output .= print_collapsible_region_end(true);
                 }
