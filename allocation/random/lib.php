@@ -94,7 +94,7 @@ class workshep_random_allocator implements workshep_allocator {
         // Increase timeout to max of 2 minutes.
         // Writing thousands of records does take time
         if (!PHPUNIT_TEST) { // BASE-4539: Prevent error in unit tests.
-            set_time_limit(120);
+            set_time_limit(600); // BASE-5472: Increase to 10 minutes to handle use case of 300 students and 300 reviewers.
         }
 
         // BASE-5233: Increase memory for large workshop classes allocations.
