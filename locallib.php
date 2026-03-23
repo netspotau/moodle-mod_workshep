@@ -2104,12 +2104,16 @@ SQL;
         $fs = get_file_storage();
 
         if (is_array($id)) {
-            $DB->delete_records_list('workshep_grades', 'assessmentid', $id);
-            foreach ($id as $itemid) {
-                $fs->delete_area_files($this->context->id, 'mod_workshep', 'overallfeedback_content', $itemid);
-                $fs->delete_area_files($this->context->id, 'mod_workshep', 'overallfeedback_attachment', $itemid);
+            // BASE-5473: Chunk deleting of assessment because of students * reviewers can be over 65535 ids.
+            $ids = array_chunk($id, 10000);
+            foreach ($ids as $idchunk) {
+                $DB->delete_records_list('workshep_grades', 'assessmentid', $idchunk);
+                foreach ($idchunk as $itemid) {
+                    $fs->delete_area_files($this->context->id, 'mod_workshep', 'overallfeedback_content', $itemid);
+                    $fs->delete_area_files($this->context->id, 'mod_workshep', 'overallfeedback_attachment', $itemid);
+                }
+                $DB->delete_records_list('workshep_assessments', 'id', $idchunk);
             }
-            $DB->delete_records_list('workshep_assessments', 'id', $id);
 
         } else {
             $DB->delete_records('workshep_grades', array('assessmentid' => $id));
