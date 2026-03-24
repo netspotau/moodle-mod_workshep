@@ -62,6 +62,9 @@ class workshep_static_allocator implements workshep_allocator {
         $groupid    = groups_get_activity_group($this->workshep->cm, true);
         $output     = $PAGE->get_renderer('workshepallocation_static');
 
+        // BASE-5475: Increase memory for large workshop classes allocations.
+        raise_memory_limit(MEMORY_EXTRA);
+
         // Fetch the list of ids of all workshep participants.
         $numofparticipants = $this->workshep->count_participants(false, $groupid);
         $participants = $this->workshep->get_participants(false, $groupid);
