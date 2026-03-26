@@ -22,7 +22,8 @@ Feature: Workshop assessment with grade to pass
     And I log in as "teacher1"
     And I add a workshep activity to course "Course1" section "0"
     When I set the following fields to these values:
-      | Workshep name             | Test workshep |
+      # BASE-5478
+      | Workshop name             | Test workshep |
       | Add requirements          | 1             |
       | Receive a grade           | 1             |
       | completiongradeitemnumber | Assessment    |
