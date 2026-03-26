@@ -101,10 +101,9 @@ class mod_workshep_mod_form extends moodleform_mod {
         $mform->setDefault('grade', $workshepconfig->grade);
         $mform->addHelpButton('submissiongradegroup', 'submissiongrade', 'workshep');
 
-        $mform->addElement('text', 'submissiongradepass', get_string('gradetopasssubmission', 'workshep'));
+        $mform->addElement('float', 'submissiongradepass', get_string('gradetopasssubmission', 'workshep'));
         $mform->addHelpButton('submissiongradepass', 'gradepass', 'grades');
         $mform->setDefault('submissiongradepass', '');
-        $mform->setType('submissiongradepass', PARAM_RAW);
 
         $label = get_string('gradinggrade', 'workshep');
         $mform->addGroup(array(
@@ -114,10 +113,9 @@ class mod_workshep_mod_form extends moodleform_mod {
         $mform->setDefault('gradinggrade', $workshepconfig->gradinggrade);
         $mform->addHelpButton('gradinggradegroup', 'gradinggrade', 'workshep');
 
-        $mform->addElement('text', 'gradinggradepass', get_string('gradetopassgrading', 'workshep'));
+        $mform->addElement('float', 'gradinggradepass', get_string('gradetopassgrading', 'workshep'));
         $mform->addHelpButton('gradinggradepass', 'gradepass', 'grades');
         $mform->setDefault('gradinggradepass', '');
-        $mform->setType('gradinggradepass', PARAM_RAW);
 
         $options = array();
         for ($i = 5; $i >= 0; $i--) {
@@ -549,7 +547,14 @@ class mod_workshep_mod_form extends moodleform_mod {
             isset($data['completiongradeitemnumber'])) {
             $itemnames = component_gradeitems::get_itemname_mapping_for_component('mod_workshep');
             $gradepassfield = $itemnames[(int) $data['completiongradeitemnumber']] . 'gradepass';
-            if (!isset($data[$gradepassfield]) || grade_floatval($data[$gradepassfield]) == 0) {
+            // We need to make all the validations related with $gradepassfield
+            // with them being correct floats, keeping the originals unmodified for
+            // later validations / showing the form back...
+            // TODO: Note that once MDL-73994 is fixed we'll have to re-visit this and
+            // adapt the code below to the new values arriving here, without forgetting
+            // the special case of empties and nulls.
+            $gradepass = isset($data[$gradepassfield]) ? unformat_float($data[$gradepassfield]) : null;
+            if (is_null($gradepass) || $gradepass == 0) {
                 $errors['completionpassgrade'] = get_string(
                     'activitygradetopassnotset',
                     'completion'
