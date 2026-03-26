@@ -14,7 +14,8 @@ Feature: Submission types
   Scenario: Test workshep settings validation
     Given I add a workshep activity to course "Test" section "0"
     When I set the following fields to these values:
-      | Workshep name               | Test workshep |
+      # BASE-5478
+      | Workshop name               | Test workshep |
       | submissiontypetextavailable | 0             |
       | submissiontypefileavailable | 0             |
     And I press "Save and display"
