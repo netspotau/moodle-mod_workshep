@@ -164,12 +164,10 @@ if ($edit) {
         redirect($workshep->view_url());
 
     } elseif ($cansubmit and $formdata = $mform->get_data()) {
-        if ($formdata->example == 0) { // BASE-5468.
-            // this was used just for validation, it must be set to zero when dealing with normal submissions
-            unset($formdata->example);
-        } else {
-            throw new coding_exception('Invalid submission form data value: example');
-        }
+        /*
+          BASE-5491: mod_workshep: Fix warning when editing a submission.
+          Let edit_submission() handle management of example attribute.
+        */
         $timenow = time();
         if (is_null($submission->id)) {
             $formdata->workshepid     = $workshep->id;
