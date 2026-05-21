@@ -56,6 +56,16 @@ class mod_workshep_mod_form extends moodleform_mod {
      */
     public function definition() {
         global $CFG, $DB, $PAGE;
+
+        // BASE-5509: We don't do anything custom with completion data, so avoid doing any unnecessary work.
+        $completionpagetypes = [
+            'course-defaultcompletion' => 'Edit completion default settings (Moodle >= 4.3)',
+            'course-editbulkcompletion' => 'Edit completion settings in bulk for a single course',
+            'course-editdefaultcompletion' => 'Edit completion default settings (Moodle < 4.3)',
+        ];
+        if (isset($completionpagetypes[$PAGE->pagetype])) {
+            return;
+        }
 		
 		$PAGE->requires->jquery();
 		$PAGE->requires->js('/mod/workshep/mod_form.js');
