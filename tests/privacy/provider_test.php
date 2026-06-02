@@ -192,19 +192,19 @@ final class provider_test extends provider_testcase {
         // Student1 has data in workshep11 (author + self reviewer), workshep12 (author) and workshep21 (reviewer).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->student1->id);
         $this->assertInstanceOf(\core_privacy\local\request\contextlist::class, $contextlist);
-        $this->assertEqualsCanonicalizing([$context11->id, $context12->id, $context21->id], $contextlist->get_contextids());
+        $this->assertEqualsCanonicalizing([$context11->id, $context12->id, $context21->id], array_values($contextlist->get_contextids()));
 
         // Student2 has data in workshep11 (reviewer), workshep12 (reviewer) and workshep21 (author).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->student2->id);
-        $this->assertEqualsCanonicalizing([$context11->id, $context12->id, $context21->id], $contextlist->get_contextids());
+        $this->assertEqualsCanonicalizing([$context11->id, $context12->id, $context21->id], array_values($contextlist->get_contextids()));
 
         // Student3 has data in workshep11 (reviewer).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->student3->id);
-        $this->assertEqualsCanonicalizing([$context11->id], $contextlist->get_contextids());
+        $this->assertEqualsCanonicalizing([$context11->id], array_values($contextlist->get_contextids()));
 
         // Teacher4 has data in workshep12 (gradeoverby) and workshep21 (gradinggradeoverby).
         $contextlist = \mod_workshep\privacy\provider::get_contexts_for_userid($this->teacher4->id);
-        $this->assertEqualsCanonicalizing([$context21->id, $context12->id], $contextlist->get_contextids());
+        $this->assertEqualsCanonicalizing([$context21->id, $context12->id], array_values($contextlist->get_contextids()));
     }
 
     /**

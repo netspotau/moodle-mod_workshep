@@ -23,69 +23,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
-require_once(dirname(__FILE__).'/lib.php');
+require(__DIR__.'/../../config.php');
 
-$id = required_param('id', PARAM_INT);   // course
+// For this type of page this is the course id.
+$courseid = required_param('id', PARAM_INT);
 
-$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
-
-require_course_login($course);
-
-$PAGE->set_pagelayout('incourse');
-$PAGE->set_url('/mod/workshep/index.php', array('id' => $course->id));
-$PAGE->set_title($course->fullname);
-$PAGE->set_heading($course->shortname);
-$PAGE->navbar->add(get_string('modulenameplural', 'workshep'));
-
-/// Output starts here
-
-echo $OUTPUT->header();
-
-$params = array('context' => context_course::instance($course->id));
-$event = \mod_workshep\event\course_module_instance_list_viewed::create($params);
-$event->add_record_snapshot('course', $course);
-$event->trigger();
-
-/// Get all the appropriate data
-
-if (! $worksheps = get_all_instances_in_course('workshep', $course)) {
-    echo $OUTPUT->heading(get_string('modulenameplural', 'workshep'));
-    notice(get_string('noworksheps', 'workshep'), new moodle_url('/course/view.php', array('id' => $course->id)));
-    echo $OUTPUT->footer();
-    die();
-}
-
-$usesections = course_format_uses_sections($course->format);
-
-$timenow        = time();
-$strname        = get_string('name');
-$table          = new html_table();
-
-if ($usesections) {
-    $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head  = array ($strsectionname, $strname);
-    $table->align = array ('center', 'left');
-} else {
-    $table->head  = array ($strname);
-    $table->align = array ('left');
-}
-
-foreach ($worksheps as $workshep) {
-    if (empty($workshep->visible)) {
-        $link = html_writer::link(new moodle_url('/mod/workshep/view.php', array('id' => $workshep->coursemodule)),
-                                  $workshep->name, array('class' => 'dimmed'));
-    } else {
-        $link = html_writer::link(new moodle_url('/mod/workshep/view.php', array('id' => $workshep->coursemodule)),
-                                  $workshep->name);
-    }
-
-    if ($usesections) {
-        $table->data[] = array(get_section_name($course, $workshep->section), $link);
-    } else {
-        $table->data[] = array($link);
-    }
-}
-echo $OUTPUT->heading(get_string('modulenameplural', 'workshep'), 3);
-echo html_writer::table($table);
-echo $OUTPUT->footer();
+\core_courseformat\activityoverviewbase::redirect_to_overview_page($courseid, 'workshep');

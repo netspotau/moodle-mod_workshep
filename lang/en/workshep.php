@@ -108,6 +108,7 @@ $string['daysleft'] = '{$a} days left';
 $string['daystoday'] = 'today';
 $string['daystomorrow'] = 'tomorrow';
 $string['daysyesterday'] = 'yesterday';
+$string['deadline'] = 'Phase deadline';
 $string['deadlinesignored'] = 'Time restrictions do not apply to you';
 $string['deletesubmission'] = 'Delete submission';
 $string['editassessmentform'] = 'Edit assessment form';
@@ -237,7 +238,6 @@ $string['nosubmissions'] = 'No submissions yet in this Enhanced Workshop';
 $string['nothingtoreview'] = 'Nothing to review';
 $string['notassessed'] = 'Not assessed yet';
 $string['notoverridden'] = 'Not overridden';
-$string['noworksheps'] = 'There are no Enhanced Workshops in this course';
 $string['noyoursubmission'] = 'You have not submitted your work yet';
 $string['nothingfound'] = 'Nothing to display';
 $string['nullgrade'] = '-';
@@ -249,10 +249,13 @@ $string['overallfeedbackmode_0'] = 'Disabled';
 $string['overallfeedbackmode_1'] = 'Enabled and optional';
 $string['overallfeedbackmode_2'] = 'Enabled and required';
 $string['overallfeedbackmode_help'] = 'If enabled, a text field is displayed at the bottom of the assessment form. Reviewers can put the overall assessment of the submission there, or provide additional explanation of their assessment.';
+$string['overview_assessment_grade'] = 'Assessment grade';
+$string['overview_submission_grade'] = 'Submission grade';
 $string['page-mod-workshep-x'] = 'Any Enhanced Workshop module page';
 $string['participant'] = 'Participant';
 $string['participantrevierof'] = 'Participant is reviewer of';
 $string['participantreviewedby'] = 'Participant is reviewed by';
+$string['phase'] = 'Phase';
 $string['phaseassessment'] = 'Assessment phase';
 $string['phaseclosed'] = 'Closed';
 $string['phaseevaluation'] = 'Grading evaluation phase';
@@ -364,6 +367,7 @@ $string['strategy_help'] = 'The grading strategy determines the assessment form 
 * Rubric - A level assessment is given regarding specified criteria';
 $string['strategyhaschanged'] = 'The Enhanced Workshop grading strategy has changed since the form was opened for editing.';
 $string['submission'] = 'Submission';
+$string['submissions'] = 'Submissions';
 $string['submissionattachment'] = 'Attachment';
 $string['submissionby'] = 'Submission by {$a}';
 $string['submissioncontent'] = 'Submission content';
@@ -477,6 +481,9 @@ $string['yourassessmentfor'] = 'Your assessment for {$a}';
 $string['yourgrades'] = 'Your grades';
 $string['yoursubmission'] = 'Your submission';
 $string['yoursubmissionwithassessments'] = 'Your submission with assessments';
+
+// Deprecated since Moodle 5.0.
+$string['noworksheps'] = 'There are no worksheps in this course';
 
 //Additions: Team Mode
 $string['teammode'] = 'Team mode';

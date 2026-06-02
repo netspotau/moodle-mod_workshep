@@ -390,7 +390,13 @@ class mod_workshep_renderer extends plugin_renderer_base {
                         } else {
                             $icon = new pix_icon('i/marker', get_string('switchphase'.$phasecode, 'mod_workshep'));
                         }
-                        $actions .= $this->output->action_icon($action->url, $icon, null, null, true);
+                        $actions .= $this->output->action_icon(
+                            $action->url,
+                            $icon,
+                            null,
+                            ['class' => 'action-icon ms-0 ps-0'],
+                            true
+                        );
                     }
                 }
             }
@@ -504,7 +510,7 @@ class mod_workshep_renderer extends plugin_renderer_base {
         }
 
         $table = new html_table();
-        $table->attributes['class'] = 'grading-report table-striped table-hover';
+        $table->attributes['class'] = 'grading-report table table-striped table-hover';
 
         $sortbyfirstname = $this->helper_sortable_heading(get_string('firstname'), 'firstname', $options->sortby, $options->sorthow);
         $sortbylastname = $this->helper_sortable_heading(get_string('lastname'), 'lastname', $options->sortby, $options->sorthow);
@@ -1812,7 +1818,10 @@ HTML;
                         foreach ($enrolledusers as $user) {
                             $submissionusers[] = $user->id;
                         }
-                        $countsubmissions = $workshep->count_submissions($submissionusers, $groupid);
+                        $countsubmissions = $workshep->count_all_submissions(
+                            $submissionusers,
+                            $groupid ? [$groupid] : [],
+                        );
                         $numofauthors = $workshep->count_potential_authors(false);
                         if ($workshep->teammode) {
                             $submissions_grouped = $workshep->get_submissions_grouped();

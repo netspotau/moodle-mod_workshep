@@ -71,7 +71,7 @@ class workshepallocation_manual_renderer extends mod_workshep_renderer  {
         $reviewers  =  array_map('fullname', $reviewers);
 
         $table              = new html_table();
-        $table->attributes['class'] = 'allocations';
+        $table->attributes['class'] = 'allocations table-reboot';
         $table->head        = array(get_string('participantreviewedby', 'workshep'),
                                     get_string('participant', 'workshep'),
                                     get_string('participantrevierof', 'workshep'));
