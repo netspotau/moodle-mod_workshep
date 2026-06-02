@@ -66,7 +66,7 @@ In order to summarize the worksheps
     And I am on the "Activity 1" "workshep activity" page
     And I change phase in workshep "Activity 1" to "Submission phase"
     When I am on the "Course 1" "course > activities > workshep" page logged in as "student1"
-    Then the following should exist in the "Table listing all Workshep activities" table:
+    Then the following should exist in the "Table listing all Enhanced Workshop activities" table:
       | Name       | Phase            | Phase deadline      | Submission grade | Assessment grade |
       | Activity 1 | Submission phase | 1 January 2040      | 10.00            | 5.00             |
       | Activity 2 | Setup phase      | -                   | -                | -                |
