@@ -27,9 +27,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component  = 'workshepallocation_scheduled';
-$plugin->version    = 2024100700;
-$plugin->requires   = 2024100100;
+$plugin->version    = 2025100600;
+$plugin->requires   = 2025092600;
 $plugin->dependencies = [
-    'workshepallocation_random'  => 2024100100,
+    'workshepallocation_random'  => 2025092600,
 ];
 $plugin->maturity   = MATURITY_STABLE;

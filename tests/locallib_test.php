@@ -39,6 +39,7 @@ require_once(__DIR__ . '/fixtures/testable.php');
 /**
  * Test cases for the internal workshep api
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(workshep::class)]
 final class locallib_test extends \advanced_testcase {
 
     /** @var object */
@@ -573,8 +574,6 @@ final class locallib_test extends \advanced_testcase {
 
     /**
      * Test init_initial_bar function.
-     *
-     * @covers \workshep::init_initial_bar
      */
     public function test_init_initial_bar(): void {
         global $SESSION;
@@ -606,8 +605,6 @@ final class locallib_test extends \advanced_testcase {
 
     /**
      * Test empty init_initial_bar
-     *
-     * @covers \workshep::init_initial_bar
      */
     public function test_init_initial_bar_empty(): void {
         $this->resetAfterTest();
@@ -620,8 +617,6 @@ final class locallib_test extends \advanced_testcase {
 
     /**
      * Test get_initial_first function
-     *
-     * @covers \workshep::get_initial_first
      */
     public function test_get_initial_first(): void {
         $this->resetAfterTest();
@@ -635,8 +630,6 @@ final class locallib_test extends \advanced_testcase {
 
     /**
      * Test get_initial_last function
-     *
-     * @covers \workshep::get_initial_last
      */
     public function test_get_initial_last(): void {
         $this->resetAfterTest();
@@ -651,7 +644,6 @@ final class locallib_test extends \advanced_testcase {
     /**
      * Get the protected propertyinitialbarprefs from workshep class.
      *
-     * @coversNothing
      * @return array initialbarspref property. eg ['i_first' => 'A', 'i_last' => 'B']
      */
     private function get_initial_bar_prefs_property(): array {
@@ -661,5 +653,135 @@ final class locallib_test extends \advanced_testcase {
         $initialbarprefs = $initialbarprefsprop->getValue($this->workshep);
 
         return $initialbarprefs;
+    }
+
+    /**
+     * Test count_all_submissions and count_all_assessments methods.
+     */
+    public function test_count_submissions_count_assessments(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $group1 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group2 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $student1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student3 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student4 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        groups_add_member($group1, $student1);
+        groups_add_member($group1, $student3);
+        groups_add_member($group2, $student2);
+
+        $activity = $this->getDataGenerator()->create_module(
+            'workshep',
+            ['course' => $course->id , 'groupmode' => SEPARATEGROUPS],
+        );
+        $cm = get_fast_modinfo($course)->get_cm($activity->cmid);
+
+        // Set up a generator to create content.
+        /** @var \mod_workshep_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_workshep');
+
+        // Create some submissions.
+        $submission1id = $generator->create_submission(
+            $activity->id,
+            $student1->id,
+            ['title' => 'My custom title', 'grade' => 85.00000],
+        );
+        $submission2id = $generator->create_submission(
+            $activity->id,
+            $student2->id,
+            ['title' => 'My custom title', 'grade' => null],
+        );
+        $submission3id = $generator->create_submission(
+            $activity->id,
+            $student3->id,
+            ['title' => 'My custom title', 'grade' => null],
+        );
+        $submission4id = $generator->create_submission(
+            $activity->id,
+            $student4->id,
+            ['title' => 'My custom title', 'grade' => null],
+        );
+        // Assess one submission.
+        $generator->create_assessment(
+            $submission1id,
+            $student1->id,
+            ['weight' => 3, 'grade' => 95.00000],
+        );
+        $generator->create_assessment(
+            $submission2id,
+            $student2->id,
+            ['weight' => 3, 'grade' => null],
+        );
+        $generator->create_assessment(
+            $submission3id,
+            $student3->id,
+            ['weight' => 3, 'grade' => null],
+        );
+        $generator->create_assessment(
+            $submission4id,
+            $student4->id,
+            ['weight' => 3, 'grade' => 35.00000],
+        );
+
+        $manager = new workshep($activity, $cm, $course, $cm->context);
+
+        $this->assertEquals(4, $manager->count_all_submissions());
+        $this->assertEquals(1, $manager->count_all_submissions(authorids: [$student1->id]));
+        $this->assertEquals(2, $manager->count_all_submissions(authorids: [$student1->id, $student2->id]));
+
+        $this->assertEquals(2, $manager->count_all_submissions(groupids: [$group1->id]));
+        $this->assertEquals(1, $manager->count_all_submissions(groupids: [$group2->id]));
+        $this->assertEquals(3, $manager->count_all_submissions(groupids: [$group1->id, $group2->id]));
+        $this->assertEquals(1, $manager->count_all_submissions(authorids: [$student1->id], groupids: [$group1->id]));
+        $this->assertEquals(0, $manager->count_all_submissions(authorids: [$student2->id], groupids: [$group1->id]));
+
+        $this->assertEquals(4, $manager->count_all_assessments());
+        $this->assertEquals(2, $manager->count_all_assessments(onlygraded: true));
+
+        $this->assertEquals(2, $manager->count_all_assessments(onlygraded: false, groupids: [$group1->id]));
+        $this->assertEquals(1, $manager->count_all_assessments(onlygraded: true, groupids: [$group1->id]));
+
+        $this->assertEquals(1, $manager->count_all_assessments(onlygraded: false, groupids: [$group2->id]));
+        $this->assertEquals(0, $manager->count_all_assessments(onlygraded: true, groupids: [$group2->id]));
+
+        $this->assertEquals(3, $manager->count_all_assessments(onlygraded: false, groupids: [$group1->id, $group2->id]));
+        $this->assertEquals(1, $manager->count_all_assessments(onlygraded: true, groupids: [$group1->id, $group2->id]));
+    }
+
+    /**
+     * Test count_all_participants method.
+     */
+    public function test_count_all_participants(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $group1 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group2 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $student1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student3 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $student4 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $guest = $this->getDataGenerator()->create_and_enrol($course, 'guest');
+
+        $this->getDataGenerator()->create_group_member(['userid' => $student1->id, 'groupid' => $group1->id]);
+        $this->getDataGenerator()->create_group_member(['userid' => $student3->id, 'groupid' => $group1->id]);
+        $this->getDataGenerator()->create_group_member(['userid' => $student2->id, 'groupid' => $group2->id]);
+
+        $activity = $this->getDataGenerator()->create_module(
+            'workshep',
+            ['course' => $course->id, 'groupmode' => SEPARATEGROUPS],
+        );
+        $cm = get_fast_modinfo($course)->get_cm($activity->cmid);
+        $manager = new workshep($activity, $cm, $course, $cm->context);
+
+        $this->assertEquals(4, $manager->count_all_participants());
+        $this->assertEquals(2, $manager->count_all_participants(groupids: [$group1->id]));
+        $this->assertEquals(1, $manager->count_all_participants(groupids: [$group2->id]));
+        $this->assertEquals(3, $manager->count_all_participants(groupids: [$group1->id, $group2->id]));
     }
 }
