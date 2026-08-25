@@ -178,6 +178,9 @@ foreach($data->grades as $k => $grade) {
 
     $row['submissiontitle'] = $grade->submissiontitle;
     $row['submissiongrade'] = $grade->submissiongrade;
+    if (!empty($grade->submissiongradeover)) { // BASE-5585: Download overridden grade if applied.
+        $row['submissiongrade'] = $grade->submissiongradeover;
+    }
 
     if (isset($grade->submissionid)) {
         $row['submissiondate'] = userdate($submissions[$grade->submissionid]->timemodified);
